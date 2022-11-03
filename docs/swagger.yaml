@@ -1,0 +1,298 @@
+basePath: /
+definitions:
+  userbalance.History:
+    properties:
+      amount:
+        type: integer
+      date:
+        type: string
+      description:
+        type: string
+    type: object
+  userbalance.Money:
+    properties:
+      amount:
+        type: integer
+      date:
+        type: string
+      fromuserid:
+        type: integer
+      touserid:
+        type: integer
+    type: object
+  userbalance.Report:
+    properties:
+      amount:
+        type: integer
+      title:
+        type: string
+    type: object
+  userbalance.RequestHistory:
+    properties:
+      direction:
+        type: string
+      sortfield:
+        type: string
+      userid:
+        type: integer
+    type: object
+  userbalance.RequestReport:
+    properties:
+      fromdate:
+        type: string
+      todate:
+        type: string
+    type: object
+  userbalance.Response:
+    properties:
+      message:
+        type: string
+    type: object
+  userbalance.Transaction:
+    properties:
+      amount:
+        type: integer
+      date:
+        type: string
+      orderid:
+        type: integer
+      serviceid:
+        type: integer
+      userid:
+        type: integer
+    type: object
+  userbalance.User:
+    properties:
+      balance:
+        type: integer
+      userid:
+        type: integer
+    type: object
+host: localhost:8081
+info:
+  contact: {}
+  description: Microservice for working with user balance
+  title: UserBalance API
+  version: "1.0"
+paths:
+  /:
+    post:
+      consumes:
+      - application/json
+      description: getting the user's balance
+      operationId: get-balance
+      parameters:
+      - description: user id
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/userbalance.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/userbalance.User'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+      summary: Get Balance
+      tags:
+      - balance
+  /cancel:
+    post:
+      consumes:
+      - application/json
+      description: cancel reservation
+      operationId: cancel
+      parameters:
+      - description: transaction info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/userbalance.Transaction'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+      summary: Cancel Reservation
+      tags:
+      - balance
+  /confirm:
+    post:
+      consumes:
+      - application/json
+      description: confirmation of funds
+      operationId: confirmation
+      parameters:
+      - description: transaction info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/userbalance.Transaction'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+      summary: Confirmation of funds
+      tags:
+      - balance
+  /history:
+    post:
+      consumes:
+      - application/json
+      description: getting user history
+      operationId: get-history
+      parameters:
+      - description: history request information
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/userbalance.RequestHistory'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/userbalance.History'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+      summary: Get History
+      tags:
+      - info
+  /report:
+    post:
+      consumes:
+      - application/json
+      description: getting report for the specified period
+      operationId: get-report
+      parameters:
+      - description: report request information
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/userbalance.RequestReport'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/userbalance.Report'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+      summary: Get Report
+      tags:
+      - info
+  /reserv:
+    post:
+      consumes:
+      - application/json
+      description: reservation of funds
+      operationId: reservation
+      parameters:
+      - description: transaction info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/userbalance.Transaction'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+      summary: Reservation of funds
+      tags:
+      - balance
+  /topup:
+    post:
+      consumes:
+      - application/json
+      description: replenishment of the user's balance
+      operationId: replenishment-balance
+      parameters:
+      - description: replenishment information
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/userbalance.Transaction'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+      summary: Replenishment Balance
+      tags:
+      - balance
+  /transfer:
+    post:
+      consumes:
+      - application/json
+      description: money transfer between users
+      operationId: transfer
+      parameters:
+      - description: transfer information
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/userbalance.Money'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/userbalance.Response'
+      summary: Money transfer
+      tags:
+      - balance
+swagger: "2.0"
