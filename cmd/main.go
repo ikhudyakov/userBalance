@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"userbalance"
 	c "userbalance/internal/config"
 	"userbalance/internal/handler"
 	"userbalance/internal/repository"
@@ -47,7 +46,7 @@ func main() {
 	services = service.NewService(repos)
 	handlers := handler.NewHandler(services)
 
-	server := new(userbalance.Server)
+	server := new(Server)
 
 	go func() {
 		if err := server.Run(conf.Port, handlers.Init()); err != nil {

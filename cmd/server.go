@@ -1,4 +1,4 @@
-package userbalance
+package main
 
 import (
 	"context"

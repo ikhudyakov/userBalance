@@ -37,7 +37,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/userbalance.User"
+                            "$ref": "#/definitions/models.User"
                         }
                     }
                 ],
@@ -45,13 +45,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.User"
+                            "$ref": "#/definitions/models.User"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -78,7 +78,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Transaction"
+                            "$ref": "#/definitions/models.Transaction"
                         }
                     }
                 ],
@@ -86,13 +86,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -119,7 +119,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Transaction"
+                            "$ref": "#/definitions/models.Transaction"
                         }
                     }
                 ],
@@ -127,13 +127,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -160,7 +160,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/userbalance.RequestHistory"
+                            "$ref": "#/definitions/models.RequestHistory"
                         }
                     }
                 ],
@@ -170,14 +170,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/userbalance.History"
+                                "$ref": "#/definitions/models.History"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -204,7 +204,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/userbalance.RequestReport"
+                            "$ref": "#/definitions/models.RequestReport"
                         }
                     }
                 ],
@@ -214,14 +214,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/userbalance.Report"
+                                "$ref": "#/definitions/models.Report"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -248,7 +248,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Transaction"
+                            "$ref": "#/definitions/models.Transaction"
                         }
                     }
                 ],
@@ -256,13 +256,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -289,7 +289,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Transaction"
+                            "$ref": "#/definitions/models.Transaction"
                         }
                     }
                 ],
@@ -297,13 +297,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -330,7 +330,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Money"
+                            "$ref": "#/definitions/models.Money"
                         }
                     }
                 ],
@@ -338,13 +338,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/userbalance.Response"
+                            "$ref": "#/definitions/models.Response"
                         }
                     }
                 }
@@ -352,7 +352,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "userbalance.History": {
+        "models.History": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -366,7 +366,7 @@ const docTemplate = `{
                 }
             }
         },
-        "userbalance.Money": {
+        "models.Money": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -383,7 +383,7 @@ const docTemplate = `{
                 }
             }
         },
-        "userbalance.Report": {
+        "models.Report": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -394,7 +394,7 @@ const docTemplate = `{
                 }
             }
         },
-        "userbalance.RequestHistory": {
+        "models.RequestHistory": {
             "type": "object",
             "properties": {
                 "direction": {
@@ -408,7 +408,7 @@ const docTemplate = `{
                 }
             }
         },
-        "userbalance.RequestReport": {
+        "models.RequestReport": {
             "type": "object",
             "properties": {
                 "fromdate": {
@@ -419,7 +419,7 @@ const docTemplate = `{
                 }
             }
         },
-        "userbalance.Response": {
+        "models.Response": {
             "type": "object",
             "properties": {
                 "message": {
@@ -427,7 +427,7 @@ const docTemplate = `{
                 }
             }
         },
-        "userbalance.Transaction": {
+        "models.Transaction": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -447,7 +447,7 @@ const docTemplate = `{
                 }
             }
         },
-        "userbalance.User": {
+        "models.User": {
             "type": "object",
             "properties": {
                 "balance": {

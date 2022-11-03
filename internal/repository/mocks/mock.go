@@ -6,7 +6,7 @@ package mock_repository
 
 import (
 	reflect "reflect"
-	userbalance "userbalance"
+	models "userbalance/internal/models"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -78,10 +78,10 @@ func (mr *MockControlMockRecorder) CreateReport(fromDate, toDate interface{}) *g
 }
 
 // GetBalance mocks base method.
-func (m *MockControl) GetBalance(userId int) (userbalance.User, error) {
+func (m *MockControl) GetBalance(userId int) (models.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBalance", userId)
-	ret0, _ := ret[0].(userbalance.User)
+	ret0, _ := ret[0].(models.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -93,10 +93,10 @@ func (mr *MockControlMockRecorder) GetBalance(userId interface{}) *gomock.Call {
 }
 
 // GetHistory mocks base method.
-func (m *MockControl) GetHistory(userId int) ([]userbalance.History, error) {
+func (m *MockControl) GetHistory(userId int) ([]models.History, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHistory", userId)
-	ret0, _ := ret[0].([]userbalance.History)
+	ret0, _ := ret[0].([]models.History)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

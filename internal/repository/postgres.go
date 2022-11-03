@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
-	"userbalance"
+	"userbalance/internal/models"
 )
 
 type ControlPosgres struct {
@@ -16,23 +16,23 @@ func NewControlPostgres(db *sql.DB) *ControlPosgres {
 	return &ControlPosgres{DB: db}
 }
 
-func (m *ControlPosgres) GetBalance(userId int) (userbalance.User, error) {
+func (m *ControlPosgres) GetBalance(userId int) (models.User, error) {
 	var balance int
 	var id int
 	rows, err := m.DB.Query("SELECT id, balance FROM users WHERE id = $1", userId)
 	if err != nil {
-		return userbalance.User{}, err
+		return models.User{}, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan(&id, &balance)
 		if err != nil {
-			return userbalance.User{}, err
+			return models.User{}, err
 		}
 	}
 
-	return userbalance.User{Id: id, Balance: balance}, err
+	return models.User{Id: id, Balance: balance}, err
 }
 
 func (m *ControlPosgres) ReplenishmentBalance(userId int, amount int, date string) error {
@@ -450,8 +450,8 @@ func (m *ControlPosgres) CreateReport(fromDate string, toDate string) (map[strin
 	return report, err
 }
 
-func (m *ControlPosgres) GetHistory(userId int) ([]userbalance.History, error) {
-	var history []userbalance.History = make([]userbalance.History, 0)
+func (m *ControlPosgres) GetHistory(userId int) ([]models.History, error) {
+	var history []models.History = make([]models.History, 0)
 
 	rows, err := m.DB.Query(`
 		SELECT date, amount, description
@@ -472,7 +472,7 @@ func (m *ControlPosgres) GetHistory(userId int) ([]userbalance.History, error) {
 		if err != nil {
 			return history, err
 		}
-		h := userbalance.History{
+		h := models.History{
 			Date:        date.Format("02/01/2006"),
 			Amount:      amount,
 			Description: description,

@@ -1,10 +1,11 @@
 package handler
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
-	"userbalance"
+	"userbalance/internal/models"
+
+	"github.com/mailru/easyjson"
 )
 
 // @Summary Get Balance
@@ -13,41 +14,32 @@ import (
 // @ID get-balance
 // @Accept  json
 // @Produce  json
-// @Param input body userbalance.User true "user id"
-// @Success 200 {object} userbalance.User
-// @Failure 500 {object} userbalance.Response
+// @Param input body models.User true "user id"
+// @Success 200 {object} models.User
+// @Failure 500 {object} models.Response
 // @Router / [post]
 func (h *Handler) getBalance(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var userId int
 	var err error
-	var user userbalance.User
+	var user models.User
 
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if err = easyjson.UnmarshalFromReader(r.Body, &user); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
-	userId = user.Id
-
-	if user, err = h.services.GetBalance(userId); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if user, err = h.services.GetBalance(user.Id); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+	_, err = easyjson.MarshalToWriter(user, w)
+	if err != nil {
+		Error(err, w, http.StatusInternalServerError)
+		return
+	}
 }
 
 // @Summary Replenishment Balance
@@ -56,40 +48,35 @@ func (h *Handler) getBalance(w http.ResponseWriter, r *http.Request) {
 // @ID replenishment-balance
 // @Accept  json
 // @Produce  json
-// @Param input body userbalance.Transaction true "replenishment information"
-// @Success 200 {object} userbalance.Response
-// @Failure 500 {object} userbalance.Response
+// @Param input body models.Transaction true "replenishment information"
+// @Success 200 {object} models.Response
+// @Failure 500 {object} models.Response
 // @Router /topup [post]
 func (h *Handler) replenishmentBalance(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var transaction userbalance.Transaction
+	var err error
+	var transaction models.Transaction
 
-	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if err = easyjson.UnmarshalFromReader(r.Body, &transaction); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
-	if err := h.services.ReplenishmentBalance(&transaction); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if err = h.services.ReplenishmentBalance(&transaction); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	response := &userbalance.Response{
+	response := &models.Response{
 		Message: "баланс пополнен",
 	}
-	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(http.StatusOK)
+	_, err = easyjson.MarshalToWriter(response, w)
+	if err != nil {
+		Error(err, w, http.StatusInternalServerError)
+		return
+	}
 }
 
 // @Summary Money transfer
@@ -98,40 +85,35 @@ func (h *Handler) replenishmentBalance(w http.ResponseWriter, r *http.Request) {
 // @ID transfer
 // @Accept  json
 // @Produce  json
-// @Param input body userbalance.Money true "transfer information"
-// @Success 200 {object} userbalance.Response
-// @Failure 500 {object} userbalance.Response
+// @Param input body models.Money true "transfer information"
+// @Success 200 {object} models.Response
+// @Failure 500 {object} models.Response
 // @Router /transfer [post]
 func (h *Handler) transfer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var money userbalance.Money
+	var err error
+	var money models.Money
 
-	if err := json.NewDecoder(r.Body).Decode(&money); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if err = easyjson.UnmarshalFromReader(r.Body, &money); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
 	if err := h.services.Transfer(&money); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	response := &userbalance.Response{
+	response := &models.Response{
 		Message: "перевод стредств выполнен",
 	}
-	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(http.StatusOK)
+	_, err = easyjson.MarshalToWriter(response, w)
+	if err != nil {
+		Error(err, w, http.StatusInternalServerError)
+		return
+	}
 }
 
 // @Summary Get History
@@ -140,39 +122,35 @@ func (h *Handler) transfer(w http.ResponseWriter, r *http.Request) {
 // @ID get-history
 // @Accept  json
 // @Produce  json
-// @Param input body userbalance.RequestHistory true "history request information"
-// @Success 200 {object} []userbalance.History
-// @Failure 500 {object} userbalance.Response
+// @Param input body models.RequestHistory true "history request information"
+// @Success 200 {object} []models.History
+// @Failure 500 {object} models.Response
 // @Router /history [post]
 func (h *Handler) getHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var err error
-	var requestHistory userbalance.RequestHistory
-	var history []userbalance.History
+	var requestHistory models.RequestHistory
+	var history []models.History
 
-	if err = json.NewDecoder(r.Body).Decode(&requestHistory); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if err = easyjson.UnmarshalFromReader(r.Body, &requestHistory); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
 	if history, err = h.services.GetHistory(&requestHistory); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(history)
+	_, err = easyjson.MarshalToWriter(&models.Histories{
+		Entity: history,
+	}, w)
+	if err != nil {
+		Error(err, w, http.StatusInternalServerError)
+		return
+	}
 }
 
 // @Summary Get Report
@@ -181,42 +159,36 @@ func (h *Handler) getHistory(w http.ResponseWriter, r *http.Request) {
 // @ID get-report
 // @Accept  json
 // @Produce  json
-// @Param input body userbalance.RequestReport true "report request information"
-// @Success 200 {object} []userbalance.Report
-// @Failure 500 {object} userbalance.Response
+// @Param input body models.RequestReport true "report request information"
+// @Success 200 {object} []models.Report
+// @Failure 500 {object} models.Response
 // @Router /report [post]
 func (h *Handler) createReport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var err error
-	var requestReport userbalance.RequestReport
+	var requestReport models.RequestReport
 	var reportPath string
 
-	if err = json.NewDecoder(r.Body).Decode(&requestReport); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if err = easyjson.UnmarshalFromReader(r.Body, &requestReport); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
 	if reportPath, err = h.services.CreateReport(&requestReport); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	response := &userbalance.Response{
+	response := &models.Response{
 		Message: reportPath,
 	}
-	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(http.StatusOK)
+	_, err = easyjson.MarshalToWriter(response, w)
+	if err != nil {
+		Error(err, w, http.StatusInternalServerError)
+		return
+	}
 }
 
 // @Summary Reservation of funds
@@ -225,41 +197,35 @@ func (h *Handler) createReport(w http.ResponseWriter, r *http.Request) {
 // @ID reservation
 // @Accept  json
 // @Produce  json
-// @Param input body userbalance.Transaction true "transaction info"
-// @Success 200 {object} userbalance.Response
-// @Failure 500 {object} userbalance.Response
+// @Param input body models.Transaction true "transaction info"
+// @Success 200 {object} models.Response
+// @Failure 500 {object} models.Response
 // @Router /reserv [post]
 func (h *Handler) reservation(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var err error
-	var transaction userbalance.Transaction
+	var transaction models.Transaction
 
-	if err = json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if err = easyjson.UnmarshalFromReader(r.Body, &transaction); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
 	if err = h.services.Reservation(&transaction); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	response := &userbalance.Response{
+	response := &models.Response{
 		Message: "резервирование средств прошло успешно",
 	}
-	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(http.StatusOK)
+	_, err = easyjson.MarshalToWriter(response, w)
+	if err != nil {
+		Error(err, w, http.StatusInternalServerError)
+		return
+	}
 }
 
 // @Summary Confirmation of funds
@@ -268,41 +234,35 @@ func (h *Handler) reservation(w http.ResponseWriter, r *http.Request) {
 // @ID confirmation
 // @Accept  json
 // @Produce  json
-// @Param input body userbalance.Transaction true "transaction info"
-// @Success 200 {object} userbalance.Response
-// @Failure 500 {object} userbalance.Response
+// @Param input body models.Transaction true "transaction info"
+// @Success 200 {object} models.Response
+// @Failure 500 {object} models.Response
 // @Router /confirm [post]
 func (h *Handler) confirmation(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var err error
-	var transaction userbalance.Transaction
+	var transaction models.Transaction
 
-	if err = json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if err = easyjson.UnmarshalFromReader(r.Body, &transaction); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
 	if err = h.services.Confirmation(&transaction); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	response := &userbalance.Response{
+	response := &models.Response{
 		Message: "средства из резерва были списаны успешно",
 	}
-	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(http.StatusOK)
+	_, err = easyjson.MarshalToWriter(response, w)
+	if err != nil {
+		Error(err, w, http.StatusInternalServerError)
+		return
+	}
 }
 
 // @Summary Cancel Reservation
@@ -311,39 +271,47 @@ func (h *Handler) confirmation(w http.ResponseWriter, r *http.Request) {
 // @ID cancel
 // @Accept  json
 // @Produce  json
-// @Param input body userbalance.Transaction true "transaction info"
-// @Success 200 {object} userbalance.Response
-// @Failure 500 {object} userbalance.Response
+// @Param input body models.Transaction true "transaction info"
+// @Success 200 {object} models.Response
+// @Failure 500 {object} models.Response
 // @Router /cancel [post]
 func (h *Handler) cancelReservation(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var err error
-	var transaction userbalance.Transaction
+	var transaction models.Transaction
 
-	if err = json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+	if err = easyjson.UnmarshalFromReader(r.Body, &transaction); err != nil {
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
 	if err = h.services.CancelReservation(&transaction); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		response := &userbalance.Response{
-			Message: err.Error(),
-		}
-		json.NewEncoder(w).Encode(response)
+		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	response := &userbalance.Response{
+	response := &models.Response{
 		Message: "разрезервирование средств прошло успешно",
 	}
-	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(http.StatusOK)
+	_, err = easyjson.MarshalToWriter(response, w)
+	if err != nil {
+		Error(err, w, http.StatusInternalServerError)
+		return
+	}
+}
+
+func Error(err error, w http.ResponseWriter, status int) {
+	log.Println(err.Error())
+	response := &models.Response{
+		Message: err.Error(),
+	}
+	res, err := easyjson.Marshal(response)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	w.WriteHeader(status)
+	w.Write(res)
 }

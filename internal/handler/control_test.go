@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"userbalance"
+	"userbalance/internal/models"
 	"userbalance/internal/service"
 	mock_service "userbalance/internal/service/mocks"
 
@@ -17,12 +17,12 @@ import (
 
 func TestHandler_getBalance(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, user userbalance.User)
+	type mockBehavior func(s *mock_service.MockControl, user models.User)
 
 	testTable := []struct {
 		name                string
 		inputBody           string
-		inputUser           userbalance.User
+		inputUser           models.User
 		mockBehavior        mockBehavior
 		expectedStatusCode  int
 		expectedRequestBody string
@@ -30,46 +30,43 @@ func TestHandler_getBalance(t *testing.T) {
 		{
 			name:      "OK",
 			inputBody: `{"userid":1}`,
-			inputUser: userbalance.User{
+			inputUser: models.User{
 				Id: 1,
 			},
-			mockBehavior: func(s *mock_service.MockControl, user userbalance.User) {
+			mockBehavior: func(s *mock_service.MockControl, user models.User) {
 				s.EXPECT().GetBalance(user.Id).Return(
-					userbalance.User{
+					models.User{
 						Id:      1,
 						Balance: 100}, nil)
 			},
-			expectedStatusCode: http.StatusOK,
-			expectedRequestBody: `{"userid":1,"balance":100}
-`,
+			expectedStatusCode:  http.StatusOK,
+			expectedRequestBody: `{"userid":1,"balance":100}`,
 		},
 
 		{
 			name:      "error wrong userid",
 			inputBody: `{"userid":10}`,
-			inputUser: userbalance.User{
+			inputUser: models.User{
 				Id: 10,
 			},
-			mockBehavior: func(s *mock_service.MockControl, user userbalance.User) {
+			mockBehavior: func(s *mock_service.MockControl, user models.User) {
 				s.EXPECT().GetBalance(user.Id).Return(
-					userbalance.User{}, errors.New("wrong userid"))
+					models.User{}, errors.New("wrong userid"))
 			},
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"wrong userid"}
-`,
+			expectedStatusCode:  http.StatusInternalServerError,
+			expectedRequestBody: `{"message":"wrong userid"}`,
 		},
 
 		{
 			name:      "error empty field",
 			inputBody: `{}`,
-			inputUser: userbalance.User{},
-			mockBehavior: func(s *mock_service.MockControl, user userbalance.User) {
+			inputUser: models.User{},
+			mockBehavior: func(s *mock_service.MockControl, user models.User) {
 				s.EXPECT().GetBalance(user.Id).Return(
-					userbalance.User{}, errors.New("empty field"))
+					models.User{}, errors.New("empty field"))
 			},
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"empty field"}
-`,
+			expectedStatusCode:  http.StatusInternalServerError,
+			expectedRequestBody: `{"message":"empty field"}`,
 		},
 	}
 
@@ -101,12 +98,12 @@ func TestHandler_getBalance(t *testing.T) {
 
 func TestHandler_replenishmentBalance(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, transaction userbalance.Transaction)
+	type mockBehavior func(s *mock_service.MockControl, transaction models.Transaction)
 
 	testTable := []struct {
 		name                string
 		inputBody           string
-		inputTransaction    userbalance.Transaction
+		inputTransaction    models.Transaction
 		mockBehavior        mockBehavior
 		expectedStatusCode  int
 		expectedRequestBody string
@@ -114,35 +111,33 @@ func TestHandler_replenishmentBalance(t *testing.T) {
 		{
 			name:      "OK",
 			inputBody: `{"userid":1,"amount":100,"serviceid":0,"orderid":0}`,
-			inputTransaction: userbalance.Transaction{
+			inputTransaction: models.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 0,
 				OrderID:   0,
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction userbalance.Transaction) {
+			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
 				s.EXPECT().ReplenishmentBalance(&transaction).Return(nil)
 			},
-			expectedStatusCode: http.StatusOK,
-			expectedRequestBody: `{"message":"баланс пополнен"}
-`,
+			expectedStatusCode:  http.StatusOK,
+			expectedRequestBody: `{"message":"баланс пополнен"}`,
 		},
 
 		{
 			name:      "error",
 			inputBody: `{}`,
-			inputTransaction: userbalance.Transaction{
+			inputTransaction: models.Transaction{
 				UserID:    0,
 				Amount:    0,
 				ServiceID: 0,
 				OrderID:   0,
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction userbalance.Transaction) {
+			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
 				s.EXPECT().ReplenishmentBalance(&transaction).Return(errors.New("replenishment balance error"))
 			},
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"replenishment balance error"}
-`,
+			expectedStatusCode:  http.StatusInternalServerError,
+			expectedRequestBody: `{"message":"replenishment balance error"}`,
 		},
 	}
 
@@ -174,12 +169,12 @@ func TestHandler_replenishmentBalance(t *testing.T) {
 
 func TestHandler_transfer(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, money userbalance.Money)
+	type mockBehavior func(s *mock_service.MockControl, money models.Money)
 
 	testTable := []struct {
 		name                string
 		inputBody           string
-		inputMoney          userbalance.Money
+		inputMoney          models.Money
 		mockBehavior        mockBehavior
 		expectedStatusCode  int
 		expectedRequestBody string
@@ -187,35 +182,33 @@ func TestHandler_transfer(t *testing.T) {
 		{
 			name:      "OK",
 			inputBody: `{"fromuserid":1,"touserid":2,"amount":100,"date":"2022-08-01"}`,
-			inputMoney: userbalance.Money{
+			inputMoney: models.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     100,
 				Date:       "2022-08-01",
 			},
-			mockBehavior: func(s *mock_service.MockControl, money userbalance.Money) {
+			mockBehavior: func(s *mock_service.MockControl, money models.Money) {
 				s.EXPECT().Transfer(&money).Return(nil)
 			},
-			expectedStatusCode: http.StatusOK,
-			expectedRequestBody: `{"message":"перевод стредств выполнен"}
-`,
+			expectedStatusCode:  http.StatusOK,
+			expectedRequestBody: `{"message":"перевод стредств выполнен"}`,
 		},
 
 		{
 			name:      "error",
 			inputBody: `{}`,
-			inputMoney: userbalance.Money{
+			inputMoney: models.Money{
 				FromUserID: 0,
 				ToUserID:   0,
 				Amount:     0,
 				Date:       "",
 			},
-			mockBehavior: func(s *mock_service.MockControl, money userbalance.Money) {
+			mockBehavior: func(s *mock_service.MockControl, money models.Money) {
 				s.EXPECT().Transfer(&money).Return(errors.New("transfer error"))
 			},
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"transfer error"}
-`,
+			expectedStatusCode:  http.StatusInternalServerError,
+			expectedRequestBody: `{"message":"transfer error"}`,
 		},
 	}
 
@@ -247,12 +240,12 @@ func TestHandler_transfer(t *testing.T) {
 
 func TestHandler_getHistory(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, requestHistory userbalance.RequestHistory)
+	type mockBehavior func(s *mock_service.MockControl, requestHistory models.RequestHistory)
 
 	testTable := []struct {
 		name                string
 		inputBody           string
-		inputRequestHistory userbalance.RequestHistory
+		inputRequestHistory models.RequestHistory
 		mockBehavior        mockBehavior
 		expectedStatusCode  int
 		expectedRequestBody string
@@ -260,37 +253,35 @@ func TestHandler_getHistory(t *testing.T) {
 		{
 			name:      "OK",
 			inputBody: `{"userid":1,"sortfield":"amount","direction":"desc"}`,
-			inputRequestHistory: userbalance.RequestHistory{
+			inputRequestHistory: models.RequestHistory{
 				UserID:    1,
 				SortField: "amount",
 				Direction: "desc",
 			},
-			mockBehavior: func(s *mock_service.MockControl, requestHistory userbalance.RequestHistory) {
-				s.EXPECT().GetHistory(&requestHistory).Return([]userbalance.History{{
+			mockBehavior: func(s *mock_service.MockControl, requestHistory models.RequestHistory) {
+				s.EXPECT().GetHistory(&requestHistory).Return([]models.History{{
 					Date:        "01/08/2022",
 					Amount:      500,
 					Description: "Пополнение баланса",
 				}}, nil)
 			},
-			expectedStatusCode: http.StatusOK,
-			expectedRequestBody: `[{"Date":"01/08/2022","Amount":500,"Description":"Пополнение баланса"}]
-`,
+			expectedStatusCode:  http.StatusOK,
+			expectedRequestBody: `{"entity":[{"date":"01/08/2022","amount":500,"description":"Пополнение баланса"}]}`,
 		},
 
 		{
 			name:      "error",
 			inputBody: `{"userid":0,"sortfield":"","direction":""}`,
-			inputRequestHistory: userbalance.RequestHistory{
+			inputRequestHistory: models.RequestHistory{
 				UserID:    0,
 				SortField: "",
 				Direction: "",
 			},
-			mockBehavior: func(s *mock_service.MockControl, requestHistory userbalance.RequestHistory) {
+			mockBehavior: func(s *mock_service.MockControl, requestHistory models.RequestHistory) {
 				s.EXPECT().GetHistory(&requestHistory).Return(nil, errors.New("history error"))
 			},
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"history error"}
-`,
+			expectedStatusCode:  http.StatusInternalServerError,
+			expectedRequestBody: `{"message":"history error"}`,
 		},
 	}
 
@@ -322,12 +313,12 @@ func TestHandler_getHistory(t *testing.T) {
 
 func TestHandler_createReport(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, requestReport userbalance.RequestReport)
+	type mockBehavior func(s *mock_service.MockControl, requestReport models.RequestReport)
 
 	testTable := []struct {
 		name                string
 		inputBody           string
-		inputRequestReport  userbalance.RequestReport
+		inputRequestReport  models.RequestReport
 		mockBehavior        mockBehavior
 		expectedStatusCode  int
 		expectedRequestBody string
@@ -335,31 +326,29 @@ func TestHandler_createReport(t *testing.T) {
 		{
 			name:      "OK",
 			inputBody: `{"fromdate":"2022-08-01","todate":"2022-08-20"}`,
-			inputRequestReport: userbalance.RequestReport{
+			inputRequestReport: models.RequestReport{
 				FromDate: "2022-08-01",
 				ToDate:   "2022-08-20",
 			},
-			mockBehavior: func(s *mock_service.MockControl, requestReport userbalance.RequestReport) {
+			mockBehavior: func(s *mock_service.MockControl, requestReport models.RequestReport) {
 				s.EXPECT().CreateReport(&requestReport).Return("localhost:8081/file/report.cvs", nil)
 			},
-			expectedStatusCode: http.StatusOK,
-			expectedRequestBody: `{"message":"localhost:8081/file/report.cvs"}
-`,
+			expectedStatusCode:  http.StatusOK,
+			expectedRequestBody: `{"message":"localhost:8081/file/report.cvs"}`,
 		},
 
 		{
 			name:      "error",
 			inputBody: `{"fromdate":"","todate":""}`,
-			inputRequestReport: userbalance.RequestReport{
+			inputRequestReport: models.RequestReport{
 				FromDate: "",
 				ToDate:   "",
 			},
-			mockBehavior: func(s *mock_service.MockControl, requestReport userbalance.RequestReport) {
+			mockBehavior: func(s *mock_service.MockControl, requestReport models.RequestReport) {
 				s.EXPECT().CreateReport(&requestReport).Return("", errors.New("report error"))
 			},
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"report error"}
-`,
+			expectedStatusCode:  http.StatusInternalServerError,
+			expectedRequestBody: `{"message":"report error"}`,
 		},
 	}
 
@@ -391,12 +380,12 @@ func TestHandler_createReport(t *testing.T) {
 
 func TestHandler_reservation(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, transaction userbalance.Transaction)
+	type mockBehavior func(s *mock_service.MockControl, transaction models.Transaction)
 
 	testTable := []struct {
 		name                string
 		inputBody           string
-		inputTransaction    userbalance.Transaction
+		inputTransaction    models.Transaction
 		mockBehavior        mockBehavior
 		expectedStatusCode  int
 		expectedRequestBody string
@@ -404,35 +393,33 @@ func TestHandler_reservation(t *testing.T) {
 		{
 			name:      "OK",
 			inputBody: `{"userid":1,"amount":100,"serviceid":1,"orderid":12}`,
-			inputTransaction: userbalance.Transaction{
+			inputTransaction: models.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   12,
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction userbalance.Transaction) {
+			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
 				s.EXPECT().Reservation(&transaction).Return(nil)
 			},
-			expectedStatusCode: http.StatusOK,
-			expectedRequestBody: `{"message":"резервирование средств прошло успешно"}
-`,
+			expectedStatusCode:  http.StatusOK,
+			expectedRequestBody: `{"message":"резервирование средств прошло успешно"}`,
 		},
 
 		{
 			name:      "error",
 			inputBody: `{"userid":0,"amount":0,"serviceid":0,"orderid":0}`,
-			inputTransaction: userbalance.Transaction{
+			inputTransaction: models.Transaction{
 				UserID:    0,
 				Amount:    0,
 				ServiceID: 0,
 				OrderID:   0,
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction userbalance.Transaction) {
+			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
 				s.EXPECT().Reservation(&transaction).Return(errors.New("reservstion error"))
 			},
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"reservstion error"}
-`,
+			expectedStatusCode:  http.StatusInternalServerError,
+			expectedRequestBody: `{"message":"reservstion error"}`,
 		},
 	}
 
@@ -464,12 +451,12 @@ func TestHandler_reservation(t *testing.T) {
 
 func TestHandler_confirmation(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, transaction userbalance.Transaction)
+	type mockBehavior func(s *mock_service.MockControl, transaction models.Transaction)
 
 	testTable := []struct {
 		name                string
 		inputBody           string
-		inputTransaction    userbalance.Transaction
+		inputTransaction    models.Transaction
 		mockBehavior        mockBehavior
 		expectedStatusCode  int
 		expectedRequestBody string
@@ -477,35 +464,33 @@ func TestHandler_confirmation(t *testing.T) {
 		{
 			name:      "OK",
 			inputBody: `{"userid":1,"amount":100,"serviceid":1,"orderid":12}`,
-			inputTransaction: userbalance.Transaction{
+			inputTransaction: models.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   12,
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction userbalance.Transaction) {
+			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
 				s.EXPECT().Confirmation(&transaction).Return(nil)
 			},
-			expectedStatusCode: http.StatusOK,
-			expectedRequestBody: `{"message":"средства из резерва были списаны успешно"}
-`,
+			expectedStatusCode:  http.StatusOK,
+			expectedRequestBody: `{"message":"средства из резерва были списаны успешно"}`,
 		},
 
 		{
 			name:      "error",
 			inputBody: `{"userid":0,"amount":0,"serviceid":0,"orderid":0}`,
-			inputTransaction: userbalance.Transaction{
+			inputTransaction: models.Transaction{
 				UserID:    0,
 				Amount:    0,
 				ServiceID: 0,
 				OrderID:   0,
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction userbalance.Transaction) {
+			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
 				s.EXPECT().Confirmation(&transaction).Return(errors.New("confirmation error"))
 			},
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"confirmation error"}
-`,
+			expectedStatusCode:  http.StatusInternalServerError,
+			expectedRequestBody: `{"message":"confirmation error"}`,
 		},
 	}
 
@@ -537,12 +522,12 @@ func TestHandler_confirmation(t *testing.T) {
 
 func TestHandler_cancelReservation(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, transaction userbalance.Transaction)
+	type mockBehavior func(s *mock_service.MockControl, transaction models.Transaction)
 
 	testTable := []struct {
 		name                string
 		inputBody           string
-		inputTransaction    userbalance.Transaction
+		inputTransaction    models.Transaction
 		mockBehavior        mockBehavior
 		expectedStatusCode  int
 		expectedRequestBody string
@@ -550,35 +535,33 @@ func TestHandler_cancelReservation(t *testing.T) {
 		{
 			name:      "OK",
 			inputBody: `{"userid":1,"amount":100,"serviceid":1,"orderid":12}`,
-			inputTransaction: userbalance.Transaction{
+			inputTransaction: models.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   12,
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction userbalance.Transaction) {
+			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
 				s.EXPECT().CancelReservation(&transaction).Return(nil)
 			},
-			expectedStatusCode: http.StatusOK,
-			expectedRequestBody: `{"message":"разрезервирование средств прошло успешно"}
-`,
+			expectedStatusCode:  http.StatusOK,
+			expectedRequestBody: `{"message":"разрезервирование средств прошло успешно"}`,
 		},
 
 		{
 			name:      "error",
 			inputBody: `{"userid":0,"amount":0,"serviceid":0,"orderid":0}`,
-			inputTransaction: userbalance.Transaction{
+			inputTransaction: models.Transaction{
 				UserID:    0,
 				Amount:    0,
 				ServiceID: 0,
 				OrderID:   0,
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction userbalance.Transaction) {
+			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
 				s.EXPECT().CancelReservation(&transaction).Return(errors.New("cancel error"))
 			},
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"cancel error"}
-`,
+			expectedStatusCode:  http.StatusInternalServerError,
+			expectedRequestBody: `{"message":"cancel error"}`,
 		},
 	}
 

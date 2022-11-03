@@ -6,7 +6,7 @@ import (
 	"log"
 	"testing"
 	"time"
-	"userbalance"
+	"userbalance/internal/models"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -206,7 +206,7 @@ func TestGetHistory(t *testing.T) {
 		date         time.Time
 		amount       int
 		description  string
-		want         []userbalance.History
+		want         []models.History
 		wantErr      bool
 	}{
 		{
@@ -217,7 +217,7 @@ func TestGetHistory(t *testing.T) {
 			date:        time.Date(2022, 10, 20, 0, 0, 0, 0, time.Local),
 			amount:      100,
 			description: "Пополнение баланса",
-			want: []userbalance.History{
+			want: []models.History{
 				{
 					Date:        "20/10/2022",
 					Amount:      100,
@@ -345,7 +345,7 @@ func TestGetBalance(t *testing.T) {
 		args         args
 		id           int
 		balance      int
-		want         userbalance.User
+		want         models.User
 		wantErr      bool
 	}{
 		{
@@ -355,7 +355,7 @@ func TestGetBalance(t *testing.T) {
 			},
 			id:      1,
 			balance: 100,
-			want: userbalance.User{
+			want: models.User{
 				Id:      1,
 				Balance: 100,
 			},

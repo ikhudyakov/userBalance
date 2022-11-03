@@ -21,3 +21,5 @@
 go.work
 
 configlocal.toml
+
+*.csv

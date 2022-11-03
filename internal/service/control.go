@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"userbalance"
+	"userbalance/internal/models"
 	"userbalance/internal/repository"
 	"userbalance/internal/utility"
 
@@ -24,20 +24,20 @@ func NewControlService(repo repository.Control) *ControlService {
 	return &ControlService{repo: repo}
 }
 
-func (c *ControlService) GetBalance(userId int) (userbalance.User, error) {
-	var user userbalance.User
+func (c *ControlService) GetBalance(userId int) (models.User, error) {
+	var user models.User
 	var err error
 
 	if user, err = c.repo.GetBalance(userId); err != nil {
-		return userbalance.User{}, err
+		return models.User{}, err
 	}
 	if user.Id == 0 {
-		return userbalance.User{}, errors.New("пользователь не найден")
+		return models.User{}, errors.New("пользователь не найден")
 	}
 	return user, err
 }
 
-func (c *ControlService) ReplenishmentBalance(transaction *userbalance.Transaction) error {
+func (c *ControlService) ReplenishmentBalance(transaction *models.Transaction) error {
 	if transaction.UserID <= 0 {
 		return fmt.Errorf("не возможно создать пользователя с id = %d", transaction.UserID)
 	}
@@ -54,8 +54,8 @@ func (c *ControlService) ReplenishmentBalance(transaction *userbalance.Transacti
 	return c.repo.ReplenishmentBalance(transaction.UserID, transaction.Amount, transaction.Date)
 }
 
-func (c *ControlService) Transfer(money *userbalance.Money) error {
-	var user userbalance.User
+func (c *ControlService) Transfer(money *models.Money) error {
+	var user models.User
 	var err error
 
 	if money.Amount <= 0 {
@@ -85,8 +85,8 @@ func (c *ControlService) Transfer(money *userbalance.Money) error {
 	}
 }
 
-func (c *ControlService) Reservation(transaction *userbalance.Transaction) error {
-	var user userbalance.User
+func (c *ControlService) Reservation(transaction *models.Transaction) error {
+	var user models.User
 	var err error
 
 	if transaction.OrderID <= 0 {
@@ -115,7 +115,7 @@ func (c *ControlService) Reservation(transaction *userbalance.Transaction) error
 	}
 }
 
-func (c *ControlService) CancelReservation(transaction *userbalance.Transaction) error {
+func (c *ControlService) CancelReservation(transaction *models.Transaction) error {
 
 	date, _ := time.Parse("2006-01-02", transaction.Date)
 	if date.Format("2006-01-02") == "0001-01-01" {
@@ -127,7 +127,7 @@ func (c *ControlService) CancelReservation(transaction *userbalance.Transaction)
 	return c.repo.CancelReservation(transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
 }
 
-func (c *ControlService) Confirmation(transaction *userbalance.Transaction) error {
+func (c *ControlService) Confirmation(transaction *models.Transaction) error {
 
 	date, _ := time.Parse("2006-01-02", transaction.Date)
 	if date.Format("2006-01-02") == "0001-01-01" {
@@ -139,7 +139,7 @@ func (c *ControlService) Confirmation(transaction *userbalance.Transaction) erro
 	return c.repo.Confirmation(transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
 }
 
-func (c *ControlService) CreateReport(requestReport *userbalance.RequestReport) (string, error) {
+func (c *ControlService) CreateReport(requestReport *models.RequestReport) (string, error) {
 	var report map[string]int
 	var err error
 	var file *os.File
@@ -191,7 +191,7 @@ func (c *ControlService) CreateReport(requestReport *userbalance.RequestReport) 
 	return path, err
 }
 
-func (c *ControlService) GetHistory(requestHistory *userbalance.RequestHistory) ([]userbalance.History, error) {
+func (c *ControlService) GetHistory(requestHistory *models.RequestHistory) ([]models.History, error) {
 	history, err := c.repo.GetHistory(requestHistory.UserID)
 	if len(history) == 0 {
 		return history, errors.New("записи не найдены")
@@ -199,7 +199,7 @@ func (c *ControlService) GetHistory(requestHistory *userbalance.RequestHistory) 
 	return Sort(history, requestHistory.SortField, requestHistory.Direction), err
 }
 
-func Sort(history []userbalance.History, sortField, direction string) []userbalance.History {
+func Sort(history []models.History, sortField, direction string) []models.History {
 	if strings.ToLower(direction) == "desc" {
 		if strings.ToLower(sortField) == "amount" {
 			sort.SliceStable(history, func(i, j int) bool {
