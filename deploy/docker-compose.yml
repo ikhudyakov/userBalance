@@ -17,10 +17,11 @@ services:
     ports:
       - "8081:8081"
     build:
-      context: .
+      context: ../
     depends_on:
-      - "db" 
+      - "db"
   adminer:
+    container_name: adminer
     image: adminer
     restart: always
     ports:

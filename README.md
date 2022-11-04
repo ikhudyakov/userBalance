@@ -3,7 +3,7 @@
 ## Установка
 - Склонировать репозиторий _```git clone https://github.com/ikhudyakov/userBalance.git```_
 - Перейти в папку _userBalance_
-- Выполнить команду ```docker-compose up -d```
+- Выполнить команду ```docker-compose -f deploy/docker-compose.yml up -d```
 
 ## Использование 
 ### 1. Пополнение баланса пользователя
