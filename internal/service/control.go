@@ -2,29 +2,31 @@ package service
 
 import (
 	"database/sql"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 	"time"
+	c "userbalance/internal/config"
 	"userbalance/internal/models"
 	"userbalance/internal/repository"
 	"userbalance/internal/utility"
-
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/transform"
 )
 
 const layout string = "2006-01-02"
 
 type ControlService struct {
 	repo repository.Control
+	conf *c.Config
+	db   *sql.DB
 }
 
-func NewControlService(repo repository.Control) *ControlService {
-	return &ControlService{repo: repo}
+func NewControlService(repo repository.Control, conf *c.Config, db *sql.DB) *ControlService {
+	return &ControlService{
+		repo: repo,
+		conf: conf,
+		db:   db,
+	}
 }
 
 func (c *ControlService) GetBalance(userId int) (*models.User, error) {
@@ -40,49 +42,50 @@ func (c *ControlService) GetBalance(userId int) (*models.User, error) {
 	return user, err
 }
 
-func (c *ControlService) ReplenishmentBalance(transaction *models.Transaction) error {
+func (c *ControlService) ReplenishmentBalance(replenishment *models.Replenishment) error {
 	var tx *sql.Tx
 	var err error
 	var user *models.User
 
-	date, _ := time.Parse(layout, transaction.Date)
+	date, _ := time.Parse(layout, replenishment.Date)
 
 	if time.Time.IsZero(date) {
-		transaction.Date = time.Now().Format(layout)
+		replenishment.Date = time.Now().Format(layout)
 
 	} else {
-		transaction.Date = date.Format(layout)
+		replenishment.Date = date.Format(layout)
 	}
 
-	user, err = c.repo.GetUser(transaction.UserID)
+	tx, err = c.db.Begin()
 	if err != nil {
 		return err
 	}
 
-	tx, err = c.repo.GetDB().Begin()
+	user, err = c.repo.GetUserForUpdate(tx, replenishment.UserID)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	if user != nil {
-		if err = c.repo.UpdateBalanceTx(tx, transaction.UserID, user.Balance+transaction.Amount); err != nil {
+		if err = c.repo.UpdateBalanceTx(tx, replenishment.UserID, user.Balance+replenishment.Amount); err != nil {
 			tx.Rollback()
 			return err
 		}
-		if err = c.repo.InsertLogTx(tx, transaction.UserID, transaction.Date, transaction.Amount, "Пополнение баланса"); err != nil {
+		if err = c.repo.InsertLogTx(tx, replenishment.UserID, replenishment.Date, replenishment.Amount, "Пополнение баланса"); err != nil {
 			tx.Rollback()
 			return err
 		}
 	} else {
-		if err = c.repo.InsertUserTx(tx, transaction.UserID, transaction.Amount); err != nil {
+		if err = c.repo.InsertUserTx(tx, replenishment.UserID, replenishment.Amount); err != nil {
 			tx.Rollback()
 			return err
 		}
-		if err = c.repo.InsertMoneyReserveAccountsTx(tx, transaction.UserID); err != nil {
+		if err = c.repo.InsertMoneyReserveAccountsTx(tx, replenishment.UserID); err != nil {
 			tx.Rollback()
 			return err
 		}
-		if err = c.repo.InsertLogTx(tx, transaction.UserID, transaction.Date, transaction.Amount, "Пополнение баланса"); err != nil {
+		if err = c.repo.InsertLogTx(tx, replenishment.UserID, replenishment.Date, replenishment.Amount, "Пополнение баланса"); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -99,25 +102,35 @@ func (c *ControlService) Transfer(money *models.Money) error {
 	date, _ := time.Parse(layout, money.Date)
 	if time.Time.IsZero(date) {
 		money.Date = time.Now().Format(layout)
-
 	} else {
 		money.Date = date.Format(layout)
 	}
 
-	if fromUser, err = c.GetBalance(money.FromUserID); err != nil {
+	tx, err = c.db.Begin()
+	if err != nil {
 		return err
 	}
-	if toUser, err = c.GetBalance(money.ToUserID); err != nil {
+
+	if fromUser, err = c.repo.GetUserForUpdate(tx, money.FromUserID); err != nil {
+		tx.Rollback()
 		return err
+	}
+	if fromUser == nil {
+		tx.Rollback()
+		return errors.New("пользователь не найден")
+	}
+	if toUser, err = c.repo.GetUserForUpdate(tx, money.ToUserID); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if toUser == nil {
+		tx.Rollback()
+		return errors.New("пользователь не найден")
 	}
 
 	if fromUser.Balance-money.Amount < 0 {
+		tx.Rollback()
 		return errors.New("недостаточно средств")
-	}
-
-	tx, err = c.repo.GetDB().Begin()
-	if err != nil {
-		return err
 	}
 
 	if err = c.repo.UpdateBalanceTx(tx, fromUser.Id, fromUser.Balance-money.Amount); err != nil {
@@ -155,14 +168,6 @@ func (c *ControlService) Reservation(transaction *models.Transaction) error {
 		transaction.Date = date.Format(layout)
 	}
 
-	if user, err = c.GetBalance(transaction.UserID); err != nil {
-		return err
-	}
-
-	if user.Balance-transaction.Amount < 0 {
-		return errors.New("недостаточно средств")
-	}
-
 	if service, err = c.repo.GetService(transaction.ServiceID); err != nil {
 		return err
 	}
@@ -175,9 +180,22 @@ func (c *ControlService) Reservation(transaction *models.Transaction) error {
 		return err
 	}
 
-	tx, err = c.repo.GetDB().Begin()
+	tx, err = c.db.Begin()
 	if err != nil {
 		return err
+	}
+
+	if user, err = c.repo.GetUserForUpdate(tx, transaction.UserID); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if user == nil {
+		tx.Rollback()
+		return errors.New("пользователь не найден")
+	}
+	if user.Balance-transaction.Amount < 0 {
+		tx.Rollback()
+		return errors.New("недостаточно средств")
 	}
 
 	if err = c.repo.UpdateBalanceTx(tx, transaction.UserID, user.Balance-transaction.Amount); err != nil {
@@ -217,10 +235,6 @@ func (c *ControlService) CancelReservation(transaction *models.Transaction) erro
 		transaction.Date = date.Format(layout)
 	}
 
-	if user, err = c.GetBalance(transaction.UserID); err != nil {
-		return err
-	}
-
 	if service, err = c.repo.GetService(transaction.ServiceID); err != nil {
 		return err
 	}
@@ -233,9 +247,18 @@ func (c *ControlService) CancelReservation(transaction *models.Transaction) erro
 		return err
 	}
 
-	tx, err = c.repo.GetDB().Begin()
+	tx, err = c.db.Begin()
 	if err != nil {
 		return err
+	}
+
+	if user, err = c.repo.GetUserForUpdate(tx, transaction.UserID); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if user == nil {
+		tx.Rollback()
+		return errors.New("пользователь не найден")
 	}
 
 	r, err := c.repo.DeleteMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
@@ -282,7 +305,7 @@ func (c *ControlService) Confirmation(transaction *models.Transaction) error {
 		return err
 	}
 
-	tx, err = c.repo.GetDB().Begin()
+	tx, err = c.db.Begin()
 	if err != nil {
 		return err
 	}
@@ -319,15 +342,15 @@ func (c *ControlService) CreateReport(requestReport *models.RequestReport) (stri
 
 	from, _ := time.Parse(layout, requestReport.FromDate)
 	to, _ := time.Parse(layout, requestReport.ToDate)
-	if time.Time.IsZero(from) || time.Time.IsZero(to) {
-		requestReport.FromDate = utility.BeginningOfMonth().Format(layout)
-		requestReport.ToDate = utility.EndOfMonth().Format(layout)
-	} else {
-		requestReport.FromDate = from.Format(layout)
-		requestReport.ToDate = to.Format(layout)
+
+	if from.IsZero() {
+		from, _ = time.Parse(layout, utility.BeginningOfMonth().Format(layout))
+	}
+	if to.IsZero() {
+		to, _ = time.Parse(layout, utility.EndOfMonth().Format(layout))
 	}
 
-	if report, err = c.repo.GetReport(requestReport.FromDate, requestReport.ToDate); err != nil {
+	if report, err = c.repo.GetReport(from, to); err != nil {
 		return path, err
 	}
 
@@ -342,55 +365,40 @@ func (c *ControlService) CreateReport(requestReport *models.RequestReport) (stri
 	}
 	defer file.Close()
 
-	tr := charmap.Windows1251.NewEncoder().Transformer
-	encWriter := transform.NewWriter(file, tr)
-
-	csvw := csv.NewWriter(encWriter)
-
 	for k, v := range report {
-		s := make([]string, 0)
-		s = append(s, fmt.Sprintf("%s;%v", k, v))
-		err = csvw.Write(s)
+		_, err = file.WriteString(fmt.Sprintf("%s;%v\n", k, v))
 		if err != nil {
 			return path, err
 		}
 	}
-	defer csvw.Flush()
 
-	path = "localhost:8081/" + file.Name()
+	path = fmt.Sprintf("%s:%s/%s", c.conf.Host, c.conf.Port, file.Name())
 
 	return path, err
 }
 
 func (c *ControlService) GetHistory(requestHistory *models.RequestHistory) ([]models.History, error) {
-	history, err := c.repo.GetHistory(requestHistory.UserID)
+	direction := strings.ToUpper(requestHistory.Direction)
+	sortField := strings.ToLower(requestHistory.SortField)
+
+	if direction == "DESC" {
+		requestHistory.Direction = "DESC"
+	} else {
+		requestHistory.Direction = "ASC"
+	}
+
+	if sortField == "date" {
+		requestHistory.SortField = "date"
+	} else {
+		requestHistory.SortField = "amount"
+	}
+
+	history, err := c.repo.GetHistory(requestHistory)
+	if err != nil {
+		return nil, err
+	}
 	if len(history) == 0 {
 		return history, errors.New("записи не найдены")
 	}
-	return Sort(history, requestHistory.SortField, requestHistory.Direction), err
-}
-
-func Sort(history []models.History, sortField, direction string) []models.History {
-	if strings.ToLower(direction) == "desc" {
-		if strings.ToLower(sortField) == "amount" {
-			sort.SliceStable(history, func(i, j int) bool {
-				return history[i].Amount > history[j].Amount
-			})
-		} else {
-			sort.SliceStable(history, func(i, j int) bool {
-				return history[i].Date > history[j].Date
-			})
-		}
-	} else {
-		if strings.ToLower(sortField) == "amount" {
-			sort.SliceStable(history, func(i, j int) bool {
-				return history[i].Amount < history[j].Amount
-			})
-		} else {
-			sort.SliceStable(history, func(i, j int) bool {
-				return history[i].Date < history[j].Date
-			})
-		}
-	}
-	return history
+	return history, err
 }

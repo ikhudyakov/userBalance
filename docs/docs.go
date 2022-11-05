@@ -289,7 +289,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Transaction"
+                            "$ref": "#/definitions/models.Replenishment"
                         }
                     }
                 ],
@@ -379,6 +379,20 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "touserid": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Replenishment": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "userid": {
                     "type": "integer"
                 }
             }

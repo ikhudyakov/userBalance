@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"userbalance/internal/models"
 
-	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/mailru/easyjson"
 )
 
@@ -31,10 +30,7 @@ func (h *Handler) getBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = validation.Validate(user.Id,
-		validation.Required.Error("id пользователя не может быть <= 0"),
-		validation.Min(1).Error("id пользователя не может быть <= 0"),
-	); err != nil {
+	if err = user.Validate(); err != nil {
 		Error(err, w, http.StatusBadRequest)
 		return
 	}
@@ -58,7 +54,7 @@ func (h *Handler) getBalance(w http.ResponseWriter, r *http.Request) {
 // @ID replenishment-balance
 // @Accept  json
 // @Produce  json
-// @Param input body models.Transaction true "replenishment information"
+// @Param input body models.Replenishment true "replenishment information"
 // @Success 200 {object} models.Response
 // @Failure 500 {object} models.Response
 // @Router /topup [post]
@@ -66,22 +62,19 @@ func (h *Handler) replenishmentBalance(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var err error
-	var transaction models.Transaction
+	var replenishment models.Replenishment
 
-	if err = easyjson.UnmarshalFromReader(r.Body, &transaction); err != nil {
+	if err = easyjson.UnmarshalFromReader(r.Body, &replenishment); err != nil {
 		Error(err, w, http.StatusInternalServerError)
 		return
 	}
 
-	if err = validation.ValidateStruct(&transaction,
-		validation.Field(&transaction.UserID, validation.Required.Error("id пользователя не может быть <= 0"), validation.Min(1).Error("id пользователя не может быть <= 0")),
-		validation.Field(&transaction.Amount, validation.Required.Error("сумма пополнения должна быть больше 0"), validation.Min(1).Error("сумма пополнения должна быть больше 0")),
-	); err != nil {
+	if err = replenishment.Validate(); err != nil {
 		Error(err, w, http.StatusBadRequest)
 		return
 	}
 
-	if err = h.services.ReplenishmentBalance(&transaction); err != nil {
+	if err = h.services.ReplenishmentBalance(&replenishment); err != nil {
 		Error(err, w, http.StatusInternalServerError)
 		return
 	}
@@ -118,18 +111,7 @@ func (h *Handler) transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = validation.ValidateStruct(&money,
-		validation.Field(&money.FromUserID,
-			validation.Required.Error("id пользователя не может быть <= 0"),
-			validation.Min(1).Error("id пользователя не может быть <= 0")),
-		validation.Field(&money.ToUserID,
-			validation.Required.Error("id пользователя не может быть <= 0"),
-			validation.Min(1).Error("id пользователя не может быть <= 0"),
-			validation.NotIn(money.FromUserID).Error("невозможно перевести самому себе")),
-		validation.Field(&money.Amount,
-			validation.Required.Error("сумма перевода должна быть больше 0"),
-			validation.Min(1).Error("сумма перевода должна быть больше 0")),
-	); err != nil {
+	if err = money.Validate(); err != nil {
 		Error(err, w, http.StatusBadRequest)
 		return
 	}
@@ -172,10 +154,7 @@ func (h *Handler) getHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = validation.Validate(requestHistory.UserID,
-		validation.Required.Error("id пользователя не может быть <= 0"),
-		validation.Min(1).Error("id пользователя не может быть <= 0"),
-	); err != nil {
+	if err = requestHistory.Validate(); err != nil {
 		Error(err, w, http.StatusBadRequest)
 		return
 	}
@@ -254,20 +233,7 @@ func (h *Handler) reservation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = validation.ValidateStruct(&transaction,
-		validation.Field(&transaction.UserID,
-			validation.Required.Error("id пользователя не может быть <= 0"),
-			validation.Min(1).Error("id пользователя не может быть <= 0")),
-		validation.Field(&transaction.Amount,
-			validation.Required.Error("стоимость услуги должна быть больше 0"),
-			validation.Min(1).Error("стоимость услуги должна быть больше 0")),
-		validation.Field(&transaction.OrderID,
-			validation.Required.Error("номер заказа не может быть <= 0"),
-			validation.Min(1).Error("номер заказа не может быть <= 0")),
-		validation.Field(&transaction.ServiceID,
-			validation.Required.Error("id услуги не может быть <= 0"),
-			validation.Min(1).Error("id услуги не может быть <= 0")),
-	); err != nil {
+	if err = transaction.Validate(); err != nil {
 		Error(err, w, http.StatusBadRequest)
 		return
 	}
@@ -309,20 +275,7 @@ func (h *Handler) confirmation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = validation.ValidateStruct(&transaction,
-		validation.Field(&transaction.UserID,
-			validation.Required.Error("id пользователя не может быть <= 0"),
-			validation.Min(1).Error("id пользователя не может быть <= 0")),
-		validation.Field(&transaction.Amount,
-			validation.Required.Error("стоимость услуги должна быть больше 0"),
-			validation.Min(1).Error("стоимость услуги должна быть больше 0")),
-		validation.Field(&transaction.OrderID,
-			validation.Required.Error("номер заказа не может быть <= 0"),
-			validation.Min(1).Error("номер заказа не может быть <= 0")),
-		validation.Field(&transaction.ServiceID,
-			validation.Required.Error("id услуги не может быть <= 0"),
-			validation.Min(1).Error("id услуги не может быть <= 0")),
-	); err != nil {
+	if err = transaction.Validate(); err != nil {
 		Error(err, w, http.StatusBadRequest)
 		return
 	}
@@ -364,20 +317,7 @@ func (h *Handler) cancelReservation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = validation.ValidateStruct(&transaction,
-		validation.Field(&transaction.UserID,
-			validation.Required.Error("id пользователя не может быть <= 0"),
-			validation.Min(1).Error("id пользователя не может быть <= 0")),
-		validation.Field(&transaction.Amount,
-			validation.Required.Error("стоимость услуги должна быть больше 0"),
-			validation.Min(1).Error("стоимость услуги должна быть больше 0")),
-		validation.Field(&transaction.OrderID,
-			validation.Required.Error("номер заказа не может быть <= 0"),
-			validation.Min(1).Error("номер заказа не может быть <= 0")),
-		validation.Field(&transaction.ServiceID,
-			validation.Required.Error("id услуги не может быть <= 0"),
-			validation.Min(1).Error("id услуги не может быть <= 0")),
-	); err != nil {
+	if err = transaction.Validate(); err != nil {
 		Error(err, w, http.StatusBadRequest)
 		return
 	}

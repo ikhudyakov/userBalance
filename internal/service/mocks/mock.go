@@ -108,17 +108,17 @@ func (mr *MockControlMockRecorder) GetHistory(requestHistory interface{}) *gomoc
 }
 
 // ReplenishmentBalance mocks base method.
-func (m *MockControl) ReplenishmentBalance(transaction *models.Transaction) error {
+func (m *MockControl) ReplenishmentBalance(replenishment *models.Replenishment) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplenishmentBalance", transaction)
+	ret := m.ctrl.Call(m, "ReplenishmentBalance", replenishment)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReplenishmentBalance indicates an expected call of ReplenishmentBalance.
-func (mr *MockControlMockRecorder) ReplenishmentBalance(transaction interface{}) *gomock.Call {
+func (mr *MockControlMockRecorder) ReplenishmentBalance(replenishment interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplenishmentBalance", reflect.TypeOf((*MockControl)(nil).ReplenishmentBalance), transaction)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplenishmentBalance", reflect.TypeOf((*MockControl)(nil).ReplenishmentBalance), replenishment)
 }
 
 // Reservation mocks base method.

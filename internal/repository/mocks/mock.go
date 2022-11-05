@@ -7,6 +7,7 @@ package mock_repository
 import (
 	sql "database/sql"
 	reflect "reflect"
+	time "time"
 	models "userbalance/internal/models"
 
 	gomock "github.com/golang/mock/gomock"
@@ -65,37 +66,23 @@ func (mr *MockControlMockRecorder) GetBalanceReserveAccounts(userId interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalanceReserveAccounts", reflect.TypeOf((*MockControl)(nil).GetBalanceReserveAccounts), userId)
 }
 
-// GetDB mocks base method.
-func (m *MockControl) GetDB() *sql.DB {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDB")
-	ret0, _ := ret[0].(*sql.DB)
-	return ret0
-}
-
-// GetDB indicates an expected call of GetDB.
-func (mr *MockControlMockRecorder) GetDB() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDB", reflect.TypeOf((*MockControl)(nil).GetDB))
-}
-
 // GetHistory mocks base method.
-func (m *MockControl) GetHistory(userId int) ([]models.History, error) {
+func (m *MockControl) GetHistory(requestHistory *models.RequestHistory) ([]models.History, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetHistory", userId)
+	ret := m.ctrl.Call(m, "GetHistory", requestHistory)
 	ret0, _ := ret[0].([]models.History)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetHistory indicates an expected call of GetHistory.
-func (mr *MockControlMockRecorder) GetHistory(userId interface{}) *gomock.Call {
+func (mr *MockControlMockRecorder) GetHistory(requestHistory interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHistory", reflect.TypeOf((*MockControl)(nil).GetHistory), userId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHistory", reflect.TypeOf((*MockControl)(nil).GetHistory), requestHistory)
 }
 
 // GetReport mocks base method.
-func (m *MockControl) GetReport(fromDate, toDate string) (map[string]int, error) {
+func (m *MockControl) GetReport(fromDate, toDate time.Time) (map[string]int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetReport", fromDate, toDate)
 	ret0, _ := ret[0].(map[string]int)
@@ -137,6 +124,21 @@ func (m *MockControl) GetUser(userId int) (*models.User, error) {
 func (mr *MockControlMockRecorder) GetUser(userId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockControl)(nil).GetUser), userId)
+}
+
+// GetUserForUpdate mocks base method.
+func (m *MockControl) GetUserForUpdate(tx *sql.Tx, userId int) (*models.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserForUpdate", tx, userId)
+	ret0, _ := ret[0].(*models.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserForUpdate indicates an expected call of GetUserForUpdate.
+func (mr *MockControlMockRecorder) GetUserForUpdate(tx, userId interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserForUpdate", reflect.TypeOf((*MockControl)(nil).GetUserForUpdate), tx, userId)
 }
 
 // InsertLogTx mocks base method.

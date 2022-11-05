@@ -16,7 +16,7 @@ type Config struct {
 	DBname         string `yaml:"dbname"`
 	Port           string `yaml:"port"`
 	ConnectionType string `yaml:"connectiontype"`
-	DeadlineTime   int    `yaml:"deadlinetime"`
+	ContexTimeout  int    `yaml:"contextimeout"`
 	MigrationPath  string `yaml:"migrationpath"`
 	ReadTimeout    int    `yaml:"readtimeout"`
 	WriteTimeout   int    `yaml:"writetimeout"`

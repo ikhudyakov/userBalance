@@ -17,7 +17,7 @@ import (
 
 func TestHandler_getBalance(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, user *models.User)
+	type mockBehavior func(s *mock_service.MockControl, user models.User)
 
 	testTable := []struct {
 		name                string
@@ -33,9 +33,9 @@ func TestHandler_getBalance(t *testing.T) {
 			inputUser: models.User{
 				Id: 1,
 			},
-			mockBehavior: func(s *mock_service.MockControl, user *models.User) {
-				s.EXPECT().GetBalance(user).Return(
-					models.User{
+			mockBehavior: func(s *mock_service.MockControl, user models.User) {
+				s.EXPECT().GetBalance(user.Id).Return(
+					&models.User{
 						Id:      1,
 						Balance: 100}, nil)
 			},
@@ -49,24 +49,21 @@ func TestHandler_getBalance(t *testing.T) {
 			inputUser: models.User{
 				Id: 10,
 			},
-			mockBehavior: func(s *mock_service.MockControl, user *models.User) {
-				s.EXPECT().GetBalance(user).Return(
-					models.User{}, errors.New("wrong userid"))
+			mockBehavior: func(s *mock_service.MockControl, user models.User) {
+				s.EXPECT().GetBalance(user.Id).Return(
+					nil, errors.New("wrong userid"))
 			},
 			expectedStatusCode:  http.StatusInternalServerError,
 			expectedRequestBody: `{"message":"wrong userid"}`,
 		},
 
 		{
-			name:      "error empty field",
-			inputBody: `{}`,
-			inputUser: models.User{},
-			mockBehavior: func(s *mock_service.MockControl, user *models.User) {
-				s.EXPECT().GetBalance(user).Return(
-					models.User{}, errors.New("empty field"))
-			},
-			expectedStatusCode:  http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"empty field"}`,
+			name:                "error empty field",
+			inputBody:           `{}`,
+			inputUser:           models.User{},
+			mockBehavior:        func(s *mock_service.MockControl, user models.User) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"id пользователя не может быть \u003c= 0"}`,
 		},
 	}
 
@@ -76,7 +73,7 @@ func TestHandler_getBalance(t *testing.T) {
 			defer c.Finish()
 
 			control := mock_service.NewMockControl(c)
-			testCase.mockBehavior(control, &testCase.inputUser)
+			testCase.mockBehavior(control, testCase.inputUser)
 
 			services := &service.Service{Control: control}
 			h := NewHandler(services)

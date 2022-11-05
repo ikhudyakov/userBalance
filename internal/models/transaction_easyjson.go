@@ -97,7 +97,73 @@ func (v Transaction) MarshalEasyJSON(w *jwriter.Writer) {
 func (v *Transaction) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson461f4b12DecodeUserbalanceInternalModels(l, v)
 }
-func easyjson461f4b12DecodeUserbalanceInternalModels1(in *jlexer.Lexer, out *Money) {
+func easyjson461f4b12DecodeUserbalanceInternalModels1(in *jlexer.Lexer, out *Replenishment) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "userid":
+			out.UserID = int(in.Int())
+		case "amount":
+			out.Amount = int(in.Int())
+		case "date":
+			out.Date = string(in.String())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson461f4b12EncodeUserbalanceInternalModels1(out *jwriter.Writer, in Replenishment) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"userid\":"
+		out.RawString(prefix[1:])
+		out.Int(int(in.UserID))
+	}
+	{
+		const prefix string = ",\"amount\":"
+		out.RawString(prefix)
+		out.Int(int(in.Amount))
+	}
+	{
+		const prefix string = ",\"date\":"
+		out.RawString(prefix)
+		out.String(string(in.Date))
+	}
+	out.RawByte('}')
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v Replenishment) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson461f4b12EncodeUserbalanceInternalModels1(w, v)
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *Replenishment) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson461f4b12DecodeUserbalanceInternalModels1(l, v)
+}
+func easyjson461f4b12DecodeUserbalanceInternalModels2(in *jlexer.Lexer, out *Money) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -134,7 +200,7 @@ func easyjson461f4b12DecodeUserbalanceInternalModels1(in *jlexer.Lexer, out *Mon
 		in.Consumed()
 	}
 }
-func easyjson461f4b12EncodeUserbalanceInternalModels1(out *jwriter.Writer, in Money) {
+func easyjson461f4b12EncodeUserbalanceInternalModels2(out *jwriter.Writer, in Money) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -163,10 +229,10 @@ func easyjson461f4b12EncodeUserbalanceInternalModels1(out *jwriter.Writer, in Mo
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Money) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson461f4b12EncodeUserbalanceInternalModels1(w, v)
+	easyjson461f4b12EncodeUserbalanceInternalModels2(w, v)
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Money) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson461f4b12DecodeUserbalanceInternalModels1(l, v)
+	easyjson461f4b12DecodeUserbalanceInternalModels2(l, v)
 }

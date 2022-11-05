@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -28,23 +29,14 @@ func main() {
 	var conf *c.Config
 	var path string
 	var defaultPath string = "./configs/config.yaml"
-	var migrationup, migrationdown bool
 
 	path = defaultPath
 
-	if len(os.Args) > 1 {
-		for i, arg := range os.Args {
-			if arg == "-config" {
-				path = os.Args[i+1]
-			}
-			if arg == "-migrationup" {
-				migrationup = true
-			}
-			if arg == "-migrationdown" {
-				migrationdown = true
-			}
-		}
-	}
+	flag.StringVar(&path, "config", "./configs/config.yaml", "example -config ./configs/config.yaml")
+	migrationup := flag.Bool("migrationup", false, "use migrationup to perform migrationup")
+	migrationdown := flag.Bool("migrationdown", false, "use migrationdown to perform migrationdown")
+
+	flag.Parse()
 
 	conf, err = c.GetConfig(path)
 	if err != nil {
@@ -56,7 +48,7 @@ func main() {
 		}
 	}
 
-	if err = repository.Migration(conf, migrationup, migrationdown); err != nil {
+	if err = repository.Migration(conf, *migrationup, *migrationdown); err != nil {
 		log.Println(err)
 	}
 
@@ -66,7 +58,7 @@ func main() {
 	}
 
 	repos := repository.NewRepository(db)
-	services = service.NewService(repos)
+	services = service.NewService(repos, conf, db)
 	handlers := handler.NewHandler(services)
 
 	server := new(Server)
@@ -84,7 +76,7 @@ func main() {
 
 	log.Println("сервер останавливается")
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Duration(conf.DeadlineTime)*time.Second))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(conf.ContexTimeout)*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("произошла ошибка при выключении сервера: %s", err.Error())

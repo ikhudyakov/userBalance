@@ -1,6 +1,8 @@
 package service
 
 import (
+	"database/sql"
+	c "userbalance/internal/config"
 	"userbalance/internal/models"
 	"userbalance/internal/repository"
 )
@@ -8,7 +10,7 @@ import (
 //go:generate mockgen -source=service.go -destination=mocks/mock.go
 
 type Control interface {
-	ReplenishmentBalance(transaction *models.Transaction) error
+	ReplenishmentBalance(replenishment *models.Replenishment) error
 	Transfer(money *models.Money) error
 	Reservation(transaction *models.Transaction) error
 	CancelReservation(transaction *models.Transaction) error
@@ -22,8 +24,8 @@ type Service struct {
 	Control
 }
 
-func NewService(repos *repository.Repository) *Service {
+func NewService(repos *repository.Repository, conf *c.Config, db *sql.DB) *Service {
 	return &Service{
-		Control: NewControlService(repos.Control),
+		Control: NewControlService(repos.Control, conf, db),
 	}
 }

@@ -20,6 +20,15 @@ definitions:
       touserid:
         type: integer
     type: object
+  models.Replenishment:
+    properties:
+      amount:
+        type: integer
+      date:
+        type: string
+      userid:
+        type: integer
+    type: object
   models.Report:
     properties:
       amount:
@@ -253,7 +262,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/models.Transaction'
+          $ref: '#/definitions/models.Replenishment'
       produces:
       - application/json
       responses:

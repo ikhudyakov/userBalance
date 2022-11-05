@@ -5,7 +5,7 @@ password : "postgres"
 dbname : "postgres"
 port : "8081"
 connectiontype : "postgres"
-deadlinetime : 5
+contextimeout : 5
 migrationpath : "./migrations"
 readtimeout : 10
 eritetimeout : 10

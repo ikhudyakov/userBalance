@@ -2,8 +2,11 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 	"userbalance/internal/models"
+
+	sq "github.com/Masterminds/squirrel"
 )
 
 type ControlPosgres struct {
@@ -12,10 +15,6 @@ type ControlPosgres struct {
 
 func NewControlPostgres(db *sql.DB) *ControlPosgres {
 	return &ControlPosgres{DB: db}
-}
-
-func (m *ControlPosgres) GetDB() *sql.DB {
-	return m.DB
 }
 
 func (m *ControlPosgres) GetUser(userId int) (*models.User, error) {
@@ -33,14 +32,44 @@ func (m *ControlPosgres) GetUser(userId int) (*models.User, error) {
 			return nil, err
 		}
 	} else {
-		return nil, err
+		return nil, nil
 	}
 
 	return &models.User{Id: id, Balance: balance}, err
 }
 
-func (m *ControlPosgres) GetReport(fromDate string, toDate string) (map[string]int, error) {
-	var report map[string]int = map[string]int{}
+func (m *ControlPosgres) GetUserForUpdate(tx *sql.Tx, userId int) (*models.User, error) {
+	var balance int
+	var id int
+
+	stmt, err := tx.Prepare(`SELECT id, balance FROM users WHERE id = $1 FOR UPDATE;`)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	if rows.Next() {
+		err := rows.Scan(&id, &balance)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, nil
+	}
+
+	return &models.User{Id: id, Balance: balance}, err
+
+}
+
+func (m *ControlPosgres) GetReport(fromDate time.Time, toDate time.Time) (map[string]int, error) {
+	var report map[string]int = make(map[string]int)
 
 	rows, err := m.DB.Query(`
 		SELECT s.title, SUM(r.amount) AS sumAmount
@@ -67,16 +96,22 @@ func (m *ControlPosgres) GetReport(fromDate string, toDate string) (map[string]i
 	return report, err
 }
 
-func (m *ControlPosgres) GetHistory(userId int) ([]models.History, error) {
+func (m *ControlPosgres) GetHistory(requestHistory *models.RequestHistory) ([]models.History, error) {
 	var history []models.History = make([]models.History, 0)
 
-	rows, err := m.DB.Query(`
-		SELECT date, amount, description
-		FROM logs
-		WHERE user_id = $1
-	`, userId)
+	sql, args, err := sq.Select("date", "amount", "description").
+		From("logs").
+		Where(sq.Eq{"user_id": requestHistory.UserID}).
+		OrderBy(fmt.Sprintf("%s %s", requestHistory.SortField, requestHistory.Direction)).
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
 	if err != nil {
-		return history, err
+		return nil, err
+	}
+
+	rows, err := m.DB.Query(sql, args...)
+	if err != nil {
+		return nil, err
 	}
 
 	defer rows.Close()
