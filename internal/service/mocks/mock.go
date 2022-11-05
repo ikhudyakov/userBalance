@@ -78,10 +78,10 @@ func (mr *MockControlMockRecorder) CreateReport(requestReport interface{}) *gomo
 }
 
 // GetBalance mocks base method.
-func (m *MockControl) GetBalance(userId int) (models.User, error) {
+func (m *MockControl) GetBalance(userId int) (*models.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBalance", userId)
-	ret0, _ := ret[0].(models.User)
+	ret0, _ := ret[0].(*models.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

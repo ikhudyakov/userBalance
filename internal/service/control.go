@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -16,6 +17,8 @@ import (
 	"golang.org/x/text/transform"
 )
 
+const layout string = "2006-01-02"
+
 type ControlService struct {
 	repo repository.Control
 }
@@ -24,84 +27,132 @@ func NewControlService(repo repository.Control) *ControlService {
 	return &ControlService{repo: repo}
 }
 
-func (c *ControlService) GetBalance(userId int) (models.User, error) {
-	var user models.User
+func (c *ControlService) GetBalance(userId int) (*models.User, error) {
+	var user *models.User
 	var err error
 
-	if user, err = c.repo.GetBalance(userId); err != nil {
-		return models.User{}, err
+	if user, err = c.repo.GetUser(userId); err != nil {
+		return nil, err
 	}
-	if user.Id == 0 {
-		return models.User{}, errors.New("пользователь не найден")
+	if user == nil {
+		return nil, errors.New("пользователь не найден")
 	}
 	return user, err
 }
 
 func (c *ControlService) ReplenishmentBalance(transaction *models.Transaction) error {
-	if transaction.UserID <= 0 {
-		return fmt.Errorf("не возможно создать пользователя с id = %d", transaction.UserID)
-	}
-	if transaction.Amount <= 0 {
-		return fmt.Errorf("сумма пополнения должна быть больше 0")
-	}
-	date, _ := time.Parse("2006-01-02", transaction.Date)
-	if date.Format("2006-01-02") == "0001-01-01" {
-		transaction.Date = time.Now().Format("2006-01-02")
-
-	} else {
-		transaction.Date = date.Format("2006-01-02")
-	}
-	return c.repo.ReplenishmentBalance(transaction.UserID, transaction.Amount, transaction.Date)
-}
-
-func (c *ControlService) Transfer(money *models.Money) error {
-	var user models.User
+	var tx *sql.Tx
 	var err error
+	var user *models.User
 
-	if money.Amount <= 0 {
-		return errors.New("сумма перевода должна быть больше 0")
-	}
+	date, _ := time.Parse(layout, transaction.Date)
 
-	if money.FromUserID == money.ToUserID {
-		return errors.New("невозможно перевести самому себе")
-	}
-
-	date, _ := time.Parse("2006-01-02", money.Date)
-	if date.Format("2006-01-02") == "0001-01-01" {
-		money.Date = time.Now().Format("2006-01-02")
+	if time.Time.IsZero(date) {
+		transaction.Date = time.Now().Format(layout)
 
 	} else {
-		money.Date = date.Format("2006-01-02")
+		transaction.Date = date.Format(layout)
 	}
 
-	if user, err = c.GetBalance(money.FromUserID); err != nil {
+	user, err = c.repo.GetUser(transaction.UserID)
+	if err != nil {
 		return err
 	}
 
-	if user.Balance-money.Amount < 0 {
-		return errors.New("недостаточно средств")
-	} else {
-		return c.repo.Transfer(money.FromUserID, money.ToUserID, money.Amount, money.Date)
+	tx, err = c.repo.GetDB().Begin()
+	if err != nil {
+		return err
 	}
+
+	if user != nil {
+		if err = c.repo.UpdateBalanceTx(tx, transaction.UserID, user.Balance+transaction.Amount); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err = c.repo.InsertLogTx(tx, transaction.UserID, transaction.Date, transaction.Amount, "Пополнение баланса"); err != nil {
+			tx.Rollback()
+			return err
+		}
+	} else {
+		if err = c.repo.InsertUserTx(tx, transaction.UserID, transaction.Amount); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err = c.repo.InsertMoneyReserveAccountsTx(tx, transaction.UserID); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err = c.repo.InsertLogTx(tx, transaction.UserID, transaction.Date, transaction.Amount, "Пополнение баланса"); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (c *ControlService) Transfer(money *models.Money) error {
+	var tx *sql.Tx
+	var err error
+	var fromUser, toUser *models.User
+
+	date, _ := time.Parse(layout, money.Date)
+	if time.Time.IsZero(date) {
+		money.Date = time.Now().Format(layout)
+
+	} else {
+		money.Date = date.Format(layout)
+	}
+
+	if fromUser, err = c.GetBalance(money.FromUserID); err != nil {
+		return err
+	}
+	if toUser, err = c.GetBalance(money.ToUserID); err != nil {
+		return err
+	}
+
+	if fromUser.Balance-money.Amount < 0 {
+		return errors.New("недостаточно средств")
+	}
+
+	tx, err = c.repo.GetDB().Begin()
+	if err != nil {
+		return err
+	}
+
+	if err = c.repo.UpdateBalanceTx(tx, fromUser.Id, fromUser.Balance-money.Amount); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err = c.repo.InsertLogTx(tx, money.FromUserID, money.Date, money.Amount, fmt.Sprintf("Перевод средств пользователю %d", money.ToUserID)); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err = c.repo.UpdateBalanceTx(tx, toUser.Id, toUser.Balance+money.Amount); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err = c.repo.InsertLogTx(tx, money.ToUserID, money.Date, money.Amount, fmt.Sprintf("Перевод средств от пользователя %d", money.FromUserID)); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (c *ControlService) Reservation(transaction *models.Transaction) error {
-	var user models.User
+	var tx *sql.Tx
+	var user *models.User
+	var service string
 	var err error
+	var reservBalance int
 
-	if transaction.OrderID <= 0 {
-		return errors.New("укажите номер заказа")
-	}
-
-	if transaction.Amount <= 0 {
-		return errors.New("стоимость услуги не может быть меньше 0")
-	}
-
-	date, _ := time.Parse("2006-01-02", transaction.Date)
-	if date.Format("2006-01-02") == "0001-01-01" {
-		transaction.Date = time.Now().Format("2006-01-02")
+	date, _ := time.Parse(layout, transaction.Date)
+	if time.Time.IsZero(date) {
+		transaction.Date = time.Now().Format(layout)
 	} else {
-		transaction.Date = date.Format("2006-01-02")
+		transaction.Date = date.Format(layout)
 	}
 
 	if user, err = c.GetBalance(transaction.UserID); err != nil {
@@ -110,33 +161,153 @@ func (c *ControlService) Reservation(transaction *models.Transaction) error {
 
 	if user.Balance-transaction.Amount < 0 {
 		return errors.New("недостаточно средств")
-	} else {
-		return c.repo.Reservation(transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
 	}
+
+	if service, err = c.repo.GetService(transaction.ServiceID); err != nil {
+		return err
+	}
+
+	if service == "" {
+		return errors.New("услуга не найдена")
+	}
+
+	if reservBalance, err = c.repo.GetBalanceReserveAccounts(transaction.UserID); err != nil {
+		return err
+	}
+
+	tx, err = c.repo.GetDB().Begin()
+	if err != nil {
+		return err
+	}
+
+	if err = c.repo.UpdateBalanceTx(tx, transaction.UserID, user.Balance-transaction.Amount); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err = c.repo.UpdateMoneyReserveAccountsTx(tx, transaction.UserID, reservBalance+transaction.Amount); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err = c.repo.InsertMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err = c.repo.InsertLogTx(tx, transaction.UserID, transaction.Date, transaction.Amount, fmt.Sprintf("Заказ №%d, услуга \"%s\"", transaction.OrderID, service)); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (c *ControlService) CancelReservation(transaction *models.Transaction) error {
+	var tx *sql.Tx
+	var user *models.User
+	var service string
+	var err error
+	var reservBalance int
 
-	date, _ := time.Parse("2006-01-02", transaction.Date)
-	if date.Format("2006-01-02") == "0001-01-01" {
-		transaction.Date = time.Now().Format("2006-01-02")
+	date, _ := time.Parse(layout, transaction.Date)
+	if time.Time.IsZero(date) {
+		transaction.Date = time.Now().Format(layout)
 	} else {
-		transaction.Date = date.Format("2006-01-02")
+		transaction.Date = date.Format(layout)
 	}
 
-	return c.repo.CancelReservation(transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
+	if user, err = c.GetBalance(transaction.UserID); err != nil {
+		return err
+	}
+
+	if service, err = c.repo.GetService(transaction.ServiceID); err != nil {
+		return err
+	}
+
+	if service == "" {
+		return errors.New("услуга не найдена")
+	}
+
+	if reservBalance, err = c.repo.GetBalanceReserveAccounts(transaction.UserID); err != nil {
+		return err
+	}
+
+	tx, err = c.repo.GetDB().Begin()
+	if err != nil {
+		return err
+	}
+
+	r, err := c.repo.DeleteMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if r == 0 {
+		tx.Rollback()
+		return errors.New("по указанным критериям не было резерва")
+	}
+
+	if err = c.repo.InsertLogTx(tx, transaction.UserID, transaction.Date, transaction.Amount, fmt.Sprintf("Отмена заказа №%d, услуга \"%s\"", transaction.OrderID, service)); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err = c.repo.UpdateBalanceTx(tx, transaction.UserID, user.Balance+transaction.Amount); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err = c.repo.UpdateMoneyReserveAccountsTx(tx, transaction.UserID, reservBalance-transaction.Amount); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (c *ControlService) Confirmation(transaction *models.Transaction) error {
+	var tx *sql.Tx
+	var err error
+	var reservBalance int
 
-	date, _ := time.Parse("2006-01-02", transaction.Date)
-	if date.Format("2006-01-02") == "0001-01-01" {
-		transaction.Date = time.Now().Format("2006-01-02")
+	date, _ := time.Parse(layout, transaction.Date)
+	if time.Time.IsZero(date) {
+		transaction.Date = time.Now().Format(layout)
 	} else {
-		transaction.Date = date.Format("2006-01-02")
+		transaction.Date = date.Format(layout)
 	}
 
-	return c.repo.Confirmation(transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
+	if reservBalance, err = c.repo.GetBalanceReserveAccounts(transaction.UserID); err != nil {
+		return err
+	}
+
+	tx, err = c.repo.GetDB().Begin()
+	if err != nil {
+		return err
+	}
+
+	r, err := c.repo.DeleteMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if r == 0 {
+		tx.Rollback()
+		return errors.New("по указанным критериям не было резерва")
+	}
+
+	if err = c.repo.UpdateMoneyReserveAccountsTx(tx, transaction.UserID, reservBalance-transaction.Amount); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err = c.repo.InsertReportTx(tx, transaction.UserID, transaction.ServiceID, transaction.Amount, transaction.Date); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (c *ControlService) CreateReport(requestReport *models.RequestReport) (string, error) {
@@ -146,17 +317,17 @@ func (c *ControlService) CreateReport(requestReport *models.RequestReport) (stri
 	var path string
 	var dir string = "file"
 
-	from, _ := time.Parse("2006-01-02", requestReport.FromDate)
-	to, _ := time.Parse("2006-01-02", requestReport.ToDate)
-	if (from.Format("2006-01-02") == "0001-01-01") || (to.Format("2006-01-02") == "0001-01-01") {
-		requestReport.FromDate = utility.BeginningOfMonth().Format("2006-01-02")
-		requestReport.ToDate = utility.EndOfMonth().Format("2006-01-02")
+	from, _ := time.Parse(layout, requestReport.FromDate)
+	to, _ := time.Parse(layout, requestReport.ToDate)
+	if time.Time.IsZero(from) || time.Time.IsZero(to) {
+		requestReport.FromDate = utility.BeginningOfMonth().Format(layout)
+		requestReport.ToDate = utility.EndOfMonth().Format(layout)
 	} else {
-		requestReport.FromDate = from.Format("2006-01-02")
-		requestReport.ToDate = to.Format("2006-01-02")
+		requestReport.FromDate = from.Format(layout)
+		requestReport.ToDate = to.Format(layout)
 	}
 
-	if report, err = c.repo.CreateReport(requestReport.FromDate, requestReport.ToDate); err != nil {
+	if report, err = c.repo.GetReport(requestReport.FromDate, requestReport.ToDate); err != nil {
 		return path, err
 	}
 

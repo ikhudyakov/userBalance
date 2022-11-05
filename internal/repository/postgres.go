@@ -2,8 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"errors"
-	"fmt"
 	"time"
 	"userbalance/internal/models"
 )
@@ -16,413 +14,32 @@ func NewControlPostgres(db *sql.DB) *ControlPosgres {
 	return &ControlPosgres{DB: db}
 }
 
-func (m *ControlPosgres) GetBalance(userId int) (models.User, error) {
+func (m *ControlPosgres) GetDB() *sql.DB {
+	return m.DB
+}
+
+func (m *ControlPosgres) GetUser(userId int) (*models.User, error) {
 	var balance int
 	var id int
 	rows, err := m.DB.Query("SELECT id, balance FROM users WHERE id = $1", userId)
 	if err != nil {
-		return models.User{}, err
+		return nil, err
 	}
 	defer rows.Close()
 
-	for rows.Next() {
+	if rows.Next() {
 		err := rows.Scan(&id, &balance)
 		if err != nil {
-			return models.User{}, err
+			return nil, err
 		}
-	}
-
-	return models.User{Id: id, Balance: balance}, err
-}
-
-func (m *ControlPosgres) ReplenishmentBalance(userId int, amount int, date string) error {
-	check, err := m.checkUser(userId)
-	if err != nil {
-		return err
-	}
-	if check {
-		tx, err := m.DB.Begin()
-		if err != nil {
-			return err
-		}
-
-		{
-			stmt, err := tx.Prepare(`UPDATE users SET balance = balance + $1 WHERE id = $2;`)
-			if err != nil {
-				tx.Rollback()
-				return err
-			}
-			defer stmt.Close()
-
-			if _, err := stmt.Exec(amount, userId); err != nil {
-				tx.Rollback()
-				return err
-			}
-		}
-
-		{
-			stmt, err := tx.Prepare(`INSERT INTO logs (user_id, date, amount, description) VALUES ($1, $2, $3, $4);`)
-			if err != nil {
-				tx.Rollback()
-				return err
-			}
-			defer stmt.Close()
-
-			if _, err := stmt.Exec(userId, date, amount, "Пополнение баланса"); err != nil {
-				tx.Rollback()
-				return err
-			}
-		}
-		return tx.Commit()
-
 	} else {
-		tx, err := m.DB.Begin()
-		if err != nil {
-			return err
-		}
-
-		{
-			stmt, err := tx.Prepare(`INSERT INTO users (id, balance) VALUES ($1, $2);`)
-			if err != nil {
-				tx.Rollback()
-				return err
-			}
-			defer stmt.Close()
-
-			if _, err := stmt.Exec(userId, amount); err != nil {
-				tx.Rollback()
-				return err
-			}
-		}
-
-		{
-			stmt, err := tx.Prepare(`INSERT INTO money_reserve_accounts (user_id) VALUES ($1);`)
-			if err != nil {
-				tx.Rollback()
-				return err
-			}
-			defer stmt.Close()
-
-			if _, err := stmt.Exec(userId); err != nil {
-				tx.Rollback()
-				return err
-			}
-		}
-
-		{
-			stmt, err := tx.Prepare(`INSERT INTO logs (user_id, date, amount, description) VALUES ($1, $2, $3, $4);`)
-			if err != nil {
-				tx.Rollback()
-				return err
-			}
-			defer stmt.Close()
-
-			if _, err := stmt.Exec(userId, date, amount, "Пополнение баланса"); err != nil {
-				tx.Rollback()
-				return err
-			}
-		}
-
-		return tx.Commit()
+		return nil, err
 	}
+
+	return &models.User{Id: id, Balance: balance}, err
 }
 
-func (m *ControlPosgres) Transfer(fromUserId int, toUserId int, amount int, date string) error {
-	tx, err := m.DB.Begin()
-	if err != nil {
-		return err
-	}
-
-	{
-		stmt, err := tx.Prepare(`UPDATE users SET balance = balance - $1 WHERE id = $2;`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(amount, fromUserId); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`INSERT INTO logs (user_id, date, amount, description) VALUES ($1, $2, $3, $4);`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(fromUserId, date, amount, fmt.Sprintf("Перевод средств пользователю %d", toUserId)); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`UPDATE users SET balance = balance + $1 WHERE id = $2;`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(amount, toUserId); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`INSERT INTO logs (user_id, date, amount, description) VALUES ($1, $2, $3, $4);`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(toUserId, date, amount, fmt.Sprintf("Перевод средств от пользователя %d", fromUserId)); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-	return tx.Commit()
-}
-
-func (m *ControlPosgres) Reservation(userId int, serviceId int, orderId int, amount int, date string) error {
-	var err error
-	var service string
-
-	if service, err = m.serviceTitle(serviceId); err != nil {
-		return err
-	}
-
-	tx, err := m.DB.Begin()
-	if err != nil {
-		return err
-	}
-
-	{
-		stmt, err := tx.Prepare(`UPDATE users SET balance = balance - $1 WHERE id = $2`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(amount, userId); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`UPDATE money_reserve_accounts SET balance = balance + $1 WHERE user_id = $2`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(amount, userId); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`INSERT INTO money_reserve_details (user_id, service_id, order_id, amount, date) VALUES ($1, $2, $3, $4, $5);`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(userId, serviceId, orderId, amount, date); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`INSERT INTO logs (user_id, date, amount, description) VALUES ($1, $2, $3, $4);`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(userId, date, amount, fmt.Sprintf("Заказ №%d, услуга \"%s\"", orderId, service)); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	return tx.Commit()
-}
-
-func (m *ControlPosgres) CancelReservation(userId int, serviceId int, orderId int, amount int, date string) error {
-	var err error
-	var service string
-
-	if service, err = m.serviceTitle(serviceId); err != nil {
-		return err
-	}
-
-	tx, err := m.DB.Begin()
-	if err != nil {
-		return err
-	}
-
-	{
-		stmt, err := tx.Prepare(`
-			DELETE FROM money_reserve_details 
-			WHERE user_id = $1 
-			AND service_id = $2 
-			AND order_id = $3
-			AND amount = $4
-			AND date = $5;`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		var result sql.Result
-		if result, err = stmt.Exec(userId, serviceId, orderId, amount, date); err != nil {
-			tx.Rollback()
-			return err
-		}
-		if r, _ := result.RowsAffected(); r == 0 {
-			tx.Rollback()
-			return errors.New("по указанным критериям не было резерва")
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`INSERT INTO logs (user_id, date, amount, description) VALUES ($1, $2, $3, $4);`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(userId, date, amount, fmt.Sprintf("Отмена заказа №%d, услуга \"%s\"", orderId, service)); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`UPDATE users SET balance = balance + $1 WHERE id = $2`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err = stmt.Exec(amount, userId); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`UPDATE money_reserve_accounts SET balance = balance - $1 WHERE user_id = $2`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(amount, userId); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	return tx.Commit()
-}
-
-func (m *ControlPosgres) Confirmation(userId int, serviceId int, orderId int, amount int, date string) error {
-	var err error
-
-	tx, err := m.DB.Begin()
-	if err != nil {
-		return err
-	}
-
-	{
-		stmt, err := tx.Prepare(`
-		UPDATE money_reserve_accounts 
-		SET balance = balance - $1 
-		WHERE user_id = (
-			SELECT md.user_id 
-			FROM money_reserve_details md 
-			WHERE	md.user_id = $2 
-			AND md.service_id = $3 
-			AND	md.order_id = $4 
-			AND	md.amount = $1
-			AND md.date = $5
-			)`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		var result sql.Result
-		if result, err = stmt.Exec(amount, userId, serviceId, orderId, date); err != nil {
-			tx.Rollback()
-			return err
-		}
-		if r, _ := result.RowsAffected(); r == 0 {
-			tx.Rollback()
-			return errors.New("по указанным критериям не было резерва")
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`
-		DELETE FROM money_reserve_details 
-		WHERE	user_id = $2 
-		AND service_id = $3 
-		AND order_id = $4 
-		AND amount = $1
-		AND date = $5
-		`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(amount, userId, serviceId, orderId, date); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`INSERT INTO report (user_id, service_id, amount, date) VALUES ($1, $2, $3, $4);`)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		defer stmt.Close()
-
-		if _, err := stmt.Exec(userId, serviceId, amount, date); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	return tx.Commit()
-}
-
-func (m *ControlPosgres) CreateReport(fromDate string, toDate string) (map[string]int, error) {
+func (m *ControlPosgres) GetReport(fromDate string, toDate string) (map[string]int, error) {
 	var report map[string]int = map[string]int{}
 
 	rows, err := m.DB.Query(`
@@ -483,65 +100,159 @@ func (m *ControlPosgres) GetHistory(userId int) ([]models.History, error) {
 	return history, err
 }
 
-func (m *ControlPosgres) checkUser(userId int) (bool, error) {
-	var check bool
-	var id int
+func (m *ControlPosgres) UpdateBalanceTx(tx *sql.Tx, userId int, amount int) error {
 
-	tx, err := m.DB.Begin()
+	stmt, err := tx.Prepare(`UPDATE users SET balance = $1 WHERE id = $2;`)
 	if err != nil {
-		return check, err
+		return err
 	}
+	defer stmt.Close()
 
-	{
-		rows, err := tx.Query(`SELECT id FROM users WHERE id = $1`, userId)
-		if err != nil {
-			tx.Rollback()
-			return check, err
-		}
-
-		defer rows.Close()
-
-		for rows.Next() {
-			err := rows.Scan(&id)
-			if err != nil {
-				tx.Rollback()
-				return check, err
-			}
-		}
-
-		if id != 0 {
-			check = true
-		}
-		return check, tx.Commit()
+	if _, err = stmt.Exec(amount, userId); err != nil {
+		return err
 	}
+	return err
 }
 
-func (m *ControlPosgres) serviceTitle(serviceId int) (string, error) {
-	var title string
+func (m *ControlPosgres) InsertUserTx(tx *sql.Tx, userId int, amount int) error {
 
-	tx, err := m.DB.Begin()
+	stmt, err := tx.Prepare(`INSERT INTO users (id, balance) VALUES ($1, $2);`)
 	if err != nil {
-		return title, err
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err := stmt.Exec(userId, amount); err != nil {
+		return err
+	}
+	return err
+}
+
+func (m *ControlPosgres) InsertLogTx(tx *sql.Tx, userId int, date string, amount int, description string) error {
+
+	stmt, err := tx.Prepare(`INSERT INTO logs (user_id, date, amount, description) VALUES ($1, $2, $3, $4);`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err := stmt.Exec(userId, date, amount, description); err != nil {
+		return err
+	}
+	return err
+}
+
+func (m *ControlPosgres) InsertMoneyReserveAccountsTx(tx *sql.Tx, userId int) error {
+
+	stmt, err := tx.Prepare(`INSERT INTO money_reserve_accounts (user_id) VALUES ($1);`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err := stmt.Exec(userId); err != nil {
+		return err
+	}
+	return err
+}
+
+func (m *ControlPosgres) UpdateMoneyReserveAccountsTx(tx *sql.Tx, userId int, amount int) error {
+
+	stmt, err := tx.Prepare(`UPDATE money_reserve_accounts SET balance = $1 WHERE user_id = $2`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err := stmt.Exec(amount, userId); err != nil {
+		return err
+	}
+	return err
+}
+
+func (m *ControlPosgres) GetBalanceReserveAccounts(userId int) (int, error) {
+	var balance int
+
+	rows, err := m.DB.Query("SELECT balance FROM money_reserve_accounts WHERE user_id = $1", userId)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		err := rows.Scan(&balance)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return balance, err
+}
+
+func (m *ControlPosgres) InsertMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date string) error {
+
+	stmt, err := tx.Prepare(`INSERT INTO money_reserve_details (user_id, service_id, order_id, amount, date) VALUES ($1, $2, $3, $4, $5);`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err := stmt.Exec(userId, serviceId, orderId, amount, date); err != nil {
+		return err
+	}
+	return err
+}
+
+func (m *ControlPosgres) DeleteMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date string) (int64, error) {
+
+	stmt, err := tx.Prepare(`
+			DELETE FROM money_reserve_details 
+			WHERE user_id = $1 
+			AND service_id = $2 
+			AND order_id = $3
+			AND amount = $4
+			AND date = $5;`)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	var result sql.Result
+	if result, err = stmt.Exec(userId, serviceId, orderId, amount, date); err != nil {
+		return 0, err
 	}
 
-	rows, err := tx.Query("SELECT title FROM services WHERE id = $1", serviceId)
+	return result.RowsAffected()
+}
+
+func (m *ControlPosgres) InsertReportTx(tx *sql.Tx, userId, serviceId, amount int, date string) error {
+
+	stmt, err := tx.Prepare(`INSERT INTO report (user_id, service_id, amount, date) VALUES ($1, $2, $3, $4);`)
 	if err != nil {
-		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err := stmt.Exec(userId, serviceId, amount, date); err != nil {
+		return err
+	}
+	return err
+}
+
+func (m *ControlPosgres) GetService(serviceId int) (string, error) {
+	var title string
+
+	rows, err := m.DB.Query("SELECT title FROM services WHERE id = $1", serviceId)
+	if err != nil {
 		return title, err
 	}
 	defer rows.Close()
 
-	for rows.Next() {
+	if rows.Next() {
 		err := rows.Scan(&title)
 		if err != nil {
-			tx.Rollback()
 			return title, err
 		}
 	}
 
-	if title == "" {
-		return title, errors.New("услуга не найдена")
-	}
-
-	return title, tx.Commit()
+	return title, err
 }

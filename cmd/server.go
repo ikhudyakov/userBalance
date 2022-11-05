@@ -2,21 +2,26 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
+	"userbalance/internal/config"
 )
 
 type Server struct {
 	httpServer *http.Server
+	conf       *config.Config
 }
 
 func (s *Server) Run(port string, handler http.Handler) error {
 	s.httpServer = &http.Server{
 		Addr:         ":" + port,
 		Handler:      handler,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  time.Duration(s.conf.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(s.conf.WriteTimeout) * time.Second,
 	}
+
+	log.Println("сервер запущен")
 
 	return s.httpServer.ListenAndServe()
 }

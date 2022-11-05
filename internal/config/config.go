@@ -1,24 +1,47 @@
 package config
 
 import (
-	"github.com/BurntSushi/toml"
+	"io"
+	"log"
+	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Host           string
-	DBPort         int
-	User           string
-	Password       string
-	DBname         string
-	Port           string
-	ConnectionType string
+	Host           string `yaml:"host"`
+	DBPort         int    `yaml:"dbport"`
+	User           string `yaml:"user"`
+	Password       string `yaml:"password"`
+	DBname         string `yaml:"dbname"`
+	Port           string `yaml:"port"`
+	ConnectionType string `yaml:"connectiontype"`
+	DeadlineTime   int    `yaml:"deadlinetime"`
+	MigrationPath  string `yaml:"migrationpath"`
+	ReadTimeout    int    `yaml:"readtimeout"`
+	WriteTimeout   int    `yaml:"writetimeout"`
 }
 
 func GetConfig(path string) (*Config, error) {
-	var err error
-	var conf *Config
 
-	_, err = toml.DecodeFile(path, &conf)
+	conf := &Config{}
+	in, err := os.Open(path)
+	if err != nil {
+		return conf, err
+	}
+	defer func() {
+		if err := in.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	buf := make([]byte, 1024)
+	n, err := in.Read(buf)
+	if err != nil && err != io.EOF {
+		log.Println(err)
+	}
+
+	err = yaml.Unmarshal(buf[:n], conf)
 
 	return conf, err
 }

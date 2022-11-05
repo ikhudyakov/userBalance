@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 	c "userbalance/internal/config"
 	"userbalance/internal/handler"
 	"userbalance/internal/repository"
@@ -25,15 +26,37 @@ func main() {
 	var db *sql.DB
 	var err error
 	var conf *c.Config
-	var path string = "./configs/config.toml"
+	var path string
+	var defaultPath string = "./configs/config.yaml"
+	var migrationup, migrationdown bool
+
+	path = defaultPath
+
+	if len(os.Args) > 1 {
+		for i, arg := range os.Args {
+			if arg == "-config" {
+				path = os.Args[i+1]
+			}
+			if arg == "-migrationup" {
+				migrationup = true
+			}
+			if arg == "-migrationdown" {
+				migrationdown = true
+			}
+		}
+	}
 
 	conf, err = c.GetConfig(path)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Printf("%s, use default config '%s'", err, defaultPath)
+		conf, err = c.GetConfig(defaultPath)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	}
 
-	if err = migration(conf); err != nil {
+	if err = repository.Migration(conf, migrationup, migrationdown); err != nil {
 		log.Println(err)
 	}
 
@@ -47,6 +70,7 @@ func main() {
 	handlers := handler.NewHandler(services)
 
 	server := new(Server)
+	server.conf = conf
 
 	go func() {
 		if err := server.Run(conf.Port, handlers.Init()); err != nil {
@@ -54,15 +78,15 @@ func main() {
 		}
 	}()
 
-	log.Println("сервер запущен")
-
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
 
 	log.Println("сервер останавливается")
 
-	if err := server.Shutdown(context.Background()); err != nil {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Duration(conf.DeadlineTime)*time.Second))
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("произошла ошибка при выключении сервера: %s", err.Error())
 	}
 

@@ -5,6 +5,7 @@
 package mock_repository
 
 import (
+	sql "database/sql"
 	reflect "reflect"
 	models "userbalance/internal/models"
 
@@ -34,62 +35,48 @@ func (m *MockControl) EXPECT() *MockControlMockRecorder {
 	return m.recorder
 }
 
-// CancelReservation mocks base method.
-func (m *MockControl) CancelReservation(userId, serviceId, orderId, amount int, date string) error {
+// DeleteMoneyReserveDetailsTx mocks base method.
+func (m *MockControl) DeleteMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CancelReservation", userId, serviceId, orderId, amount, date)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// CancelReservation indicates an expected call of CancelReservation.
-func (mr *MockControlMockRecorder) CancelReservation(userId, serviceId, orderId, amount, date interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelReservation", reflect.TypeOf((*MockControl)(nil).CancelReservation), userId, serviceId, orderId, amount, date)
-}
-
-// Confirmation mocks base method.
-func (m *MockControl) Confirmation(userId, serviceId, orderId, amount int, date string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Confirmation", userId, serviceId, orderId, amount, date)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Confirmation indicates an expected call of Confirmation.
-func (mr *MockControlMockRecorder) Confirmation(userId, serviceId, orderId, amount, date interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Confirmation", reflect.TypeOf((*MockControl)(nil).Confirmation), userId, serviceId, orderId, amount, date)
-}
-
-// CreateReport mocks base method.
-func (m *MockControl) CreateReport(fromDate, toDate string) (map[string]int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateReport", fromDate, toDate)
-	ret0, _ := ret[0].(map[string]int)
+	ret := m.ctrl.Call(m, "DeleteMoneyReserveDetailsTx", tx, userId, serviceId, orderId, amount, date)
+	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CreateReport indicates an expected call of CreateReport.
-func (mr *MockControlMockRecorder) CreateReport(fromDate, toDate interface{}) *gomock.Call {
+// DeleteMoneyReserveDetailsTx indicates an expected call of DeleteMoneyReserveDetailsTx.
+func (mr *MockControlMockRecorder) DeleteMoneyReserveDetailsTx(tx, userId, serviceId, orderId, amount, date interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReport", reflect.TypeOf((*MockControl)(nil).CreateReport), fromDate, toDate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMoneyReserveDetailsTx", reflect.TypeOf((*MockControl)(nil).DeleteMoneyReserveDetailsTx), tx, userId, serviceId, orderId, amount, date)
 }
 
-// GetBalance mocks base method.
-func (m *MockControl) GetBalance(userId int) (models.User, error) {
+// GetBalanceReserveAccounts mocks base method.
+func (m *MockControl) GetBalanceReserveAccounts(userId int) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBalance", userId)
-	ret0, _ := ret[0].(models.User)
+	ret := m.ctrl.Call(m, "GetBalanceReserveAccounts", userId)
+	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetBalance indicates an expected call of GetBalance.
-func (mr *MockControlMockRecorder) GetBalance(userId interface{}) *gomock.Call {
+// GetBalanceReserveAccounts indicates an expected call of GetBalanceReserveAccounts.
+func (mr *MockControlMockRecorder) GetBalanceReserveAccounts(userId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalance", reflect.TypeOf((*MockControl)(nil).GetBalance), userId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalanceReserveAccounts", reflect.TypeOf((*MockControl)(nil).GetBalanceReserveAccounts), userId)
+}
+
+// GetDB mocks base method.
+func (m *MockControl) GetDB() *sql.DB {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDB")
+	ret0, _ := ret[0].(*sql.DB)
+	return ret0
+}
+
+// GetDB indicates an expected call of GetDB.
+func (mr *MockControlMockRecorder) GetDB() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDB", reflect.TypeOf((*MockControl)(nil).GetDB))
 }
 
 // GetHistory mocks base method.
@@ -107,44 +94,145 @@ func (mr *MockControlMockRecorder) GetHistory(userId interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHistory", reflect.TypeOf((*MockControl)(nil).GetHistory), userId)
 }
 
-// ReplenishmentBalance mocks base method.
-func (m *MockControl) ReplenishmentBalance(userId, amount int, date string) error {
+// GetReport mocks base method.
+func (m *MockControl) GetReport(fromDate, toDate string) (map[string]int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplenishmentBalance", userId, amount, date)
+	ret := m.ctrl.Call(m, "GetReport", fromDate, toDate)
+	ret0, _ := ret[0].(map[string]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReport indicates an expected call of GetReport.
+func (mr *MockControlMockRecorder) GetReport(fromDate, toDate interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReport", reflect.TypeOf((*MockControl)(nil).GetReport), fromDate, toDate)
+}
+
+// GetService mocks base method.
+func (m *MockControl) GetService(serviceId int) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetService", serviceId)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetService indicates an expected call of GetService.
+func (mr *MockControlMockRecorder) GetService(serviceId interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetService", reflect.TypeOf((*MockControl)(nil).GetService), serviceId)
+}
+
+// GetUser mocks base method.
+func (m *MockControl) GetUser(userId int) (*models.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUser", userId)
+	ret0, _ := ret[0].(*models.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUser indicates an expected call of GetUser.
+func (mr *MockControlMockRecorder) GetUser(userId interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockControl)(nil).GetUser), userId)
+}
+
+// InsertLogTx mocks base method.
+func (m *MockControl) InsertLogTx(tx *sql.Tx, userId int, date string, amount int, description string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertLogTx", tx, userId, date, amount, description)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ReplenishmentBalance indicates an expected call of ReplenishmentBalance.
-func (mr *MockControlMockRecorder) ReplenishmentBalance(userId, amount, date interface{}) *gomock.Call {
+// InsertLogTx indicates an expected call of InsertLogTx.
+func (mr *MockControlMockRecorder) InsertLogTx(tx, userId, date, amount, description interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplenishmentBalance", reflect.TypeOf((*MockControl)(nil).ReplenishmentBalance), userId, amount, date)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertLogTx", reflect.TypeOf((*MockControl)(nil).InsertLogTx), tx, userId, date, amount, description)
 }
 
-// Reservation mocks base method.
-func (m *MockControl) Reservation(userId, serviceId, orderId, amount int, date string) error {
+// InsertMoneyReserveAccountsTx mocks base method.
+func (m *MockControl) InsertMoneyReserveAccountsTx(tx *sql.Tx, userId int) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Reservation", userId, serviceId, orderId, amount, date)
+	ret := m.ctrl.Call(m, "InsertMoneyReserveAccountsTx", tx, userId)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Reservation indicates an expected call of Reservation.
-func (mr *MockControlMockRecorder) Reservation(userId, serviceId, orderId, amount, date interface{}) *gomock.Call {
+// InsertMoneyReserveAccountsTx indicates an expected call of InsertMoneyReserveAccountsTx.
+func (mr *MockControlMockRecorder) InsertMoneyReserveAccountsTx(tx, userId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reservation", reflect.TypeOf((*MockControl)(nil).Reservation), userId, serviceId, orderId, amount, date)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertMoneyReserveAccountsTx", reflect.TypeOf((*MockControl)(nil).InsertMoneyReserveAccountsTx), tx, userId)
 }
 
-// Transfer mocks base method.
-func (m *MockControl) Transfer(fromUserId, toUserId, amount int, date string) error {
+// InsertMoneyReserveDetailsTx mocks base method.
+func (m *MockControl) InsertMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Transfer", fromUserId, toUserId, amount, date)
+	ret := m.ctrl.Call(m, "InsertMoneyReserveDetailsTx", tx, userId, serviceId, orderId, amount, date)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Transfer indicates an expected call of Transfer.
-func (mr *MockControlMockRecorder) Transfer(fromUserId, toUserId, amount, date interface{}) *gomock.Call {
+// InsertMoneyReserveDetailsTx indicates an expected call of InsertMoneyReserveDetailsTx.
+func (mr *MockControlMockRecorder) InsertMoneyReserveDetailsTx(tx, userId, serviceId, orderId, amount, date interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockControl)(nil).Transfer), fromUserId, toUserId, amount, date)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertMoneyReserveDetailsTx", reflect.TypeOf((*MockControl)(nil).InsertMoneyReserveDetailsTx), tx, userId, serviceId, orderId, amount, date)
+}
+
+// InsertReportTx mocks base method.
+func (m *MockControl) InsertReportTx(tx *sql.Tx, userId, serviceId, amount int, date string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertReportTx", tx, userId, serviceId, amount, date)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InsertReportTx indicates an expected call of InsertReportTx.
+func (mr *MockControlMockRecorder) InsertReportTx(tx, userId, serviceId, amount, date interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertReportTx", reflect.TypeOf((*MockControl)(nil).InsertReportTx), tx, userId, serviceId, amount, date)
+}
+
+// InsertUserTx mocks base method.
+func (m *MockControl) InsertUserTx(tx *sql.Tx, userId, amount int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertUserTx", tx, userId, amount)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InsertUserTx indicates an expected call of InsertUserTx.
+func (mr *MockControlMockRecorder) InsertUserTx(tx, userId, amount interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertUserTx", reflect.TypeOf((*MockControl)(nil).InsertUserTx), tx, userId, amount)
+}
+
+// UpdateBalanceTx mocks base method.
+func (m *MockControl) UpdateBalanceTx(tx *sql.Tx, userId, amount int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateBalanceTx", tx, userId, amount)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateBalanceTx indicates an expected call of UpdateBalanceTx.
+func (mr *MockControlMockRecorder) UpdateBalanceTx(tx, userId, amount interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBalanceTx", reflect.TypeOf((*MockControl)(nil).UpdateBalanceTx), tx, userId, amount)
+}
+
+// UpdateMoneyReserveAccountsTx mocks base method.
+func (m *MockControl) UpdateMoneyReserveAccountsTx(tx *sql.Tx, userId, amount int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMoneyReserveAccountsTx", tx, userId, amount)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMoneyReserveAccountsTx indicates an expected call of UpdateMoneyReserveAccountsTx.
+func (mr *MockControlMockRecorder) UpdateMoneyReserveAccountsTx(tx, userId, amount interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMoneyReserveAccountsTx", reflect.TypeOf((*MockControl)(nil).UpdateMoneyReserveAccountsTx), tx, userId, amount)
 }

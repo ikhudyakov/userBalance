@@ -1,7 +1,0 @@
-Host = "db"
-DBPort = 5432
-User = "postgres"
-Password = "postgres"
-DBname = "postgres"
-Port = "8081"
-ConnectionType = "postgres"

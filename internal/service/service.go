@@ -13,7 +13,7 @@ type Control interface {
 	Reservation(transaction *models.Transaction) error
 	CancelReservation(transaction *models.Transaction) error
 	Confirmation(transaction *models.Transaction) error
-	GetBalance(userId int) (models.User, error)
+	GetBalance(userId int) (*models.User, error)
 	CreateReport(requestReport *models.RequestReport) (string, error)
 	GetHistory(requestHistory *models.RequestHistory) ([]models.History, error)
 }

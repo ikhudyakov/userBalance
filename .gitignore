@@ -20,6 +20,6 @@
 # Go workspace file
 go.work
 
-configlocal.toml
+configlocal.yaml
 
 *.csv
