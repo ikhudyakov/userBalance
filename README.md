@@ -4,6 +4,18 @@
 - Склонировать репозиторий _```git clone https://github.com/ikhudyakov/userBalance.git```_
 - Перейти в папку _userBalance_
 - Выполнить команду ```docker-compose -f deploy/docker-compose.yml up -d```
+***
+
+## Параметры
+- Для указани пути до файла конфигурации, запускаем программу с параметром `-config "путь_до_файла"` (по умолчанию используется `./configs/config.yaml`)
+- Для выполнения миграции используется флаг `-migrationup`
+- Для отката миграции используется флаг `-migrationdown`
+
+Пример: 
+```
+./userbalance -config ./configs/newconfig.yaml -migrationdown -migrationup
+```
+***
 
 ## Использование 
 ### 1. Пополнение баланса пользователя
