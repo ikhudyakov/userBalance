@@ -1,1 +1,1 @@
-DROP SEQUENCE IF NOT EXISTS id_sequence;
+DROP SEQUENCE IF EXISTS id_sequence;

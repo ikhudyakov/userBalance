@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -77,6 +78,7 @@ func (c *ControlService) ReplenishmentBalance(replenishment *models.Replenishmen
 			return err
 		}
 		if err = c.repo.InsertMoneyReserveAccountsTx(tx, replenishment.UserID); err != nil {
+			log.Println(tx)
 			tx.Rollback()
 			return err
 		}

@@ -37,7 +37,7 @@ func (m *MockControl) EXPECT() *MockControlMockRecorder {
 }
 
 // DeleteMoneyReserveDetailsTx mocks base method.
-func (m *MockControl) DeleteMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date string) (int64, error) {
+func (m *MockControl) DeleteMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date time.Time) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteMoneyReserveDetailsTx", tx, userId, serviceId, orderId, amount, date)
 	ret0, _ := ret[0].(int64)
@@ -51,19 +51,19 @@ func (mr *MockControlMockRecorder) DeleteMoneyReserveDetailsTx(tx, userId, servi
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMoneyReserveDetailsTx", reflect.TypeOf((*MockControl)(nil).DeleteMoneyReserveDetailsTx), tx, userId, serviceId, orderId, amount, date)
 }
 
-// GetBalanceReserveAccounts mocks base method.
-func (m *MockControl) GetBalanceReserveAccounts(userId int) (int, error) {
+// GetBalanceReserveAccountsTx mocks base method.
+func (m *MockControl) GetBalanceReserveAccountsTx(tx *sql.Tx, userId int) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBalanceReserveAccounts", userId)
+	ret := m.ctrl.Call(m, "GetBalanceReserveAccountsTx", tx, userId)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetBalanceReserveAccounts indicates an expected call of GetBalanceReserveAccounts.
-func (mr *MockControlMockRecorder) GetBalanceReserveAccounts(userId interface{}) *gomock.Call {
+// GetBalanceReserveAccountsTx indicates an expected call of GetBalanceReserveAccountsTx.
+func (mr *MockControlMockRecorder) GetBalanceReserveAccountsTx(tx, userId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalanceReserveAccounts", reflect.TypeOf((*MockControl)(nil).GetBalanceReserveAccounts), userId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalanceReserveAccountsTx", reflect.TypeOf((*MockControl)(nil).GetBalanceReserveAccountsTx), tx, userId)
 }
 
 // GetHistory mocks base method.
@@ -142,7 +142,7 @@ func (mr *MockControlMockRecorder) GetUserForUpdate(tx, userId interface{}) *gom
 }
 
 // InsertLogTx mocks base method.
-func (m *MockControl) InsertLogTx(tx *sql.Tx, userId int, date string, amount int, description string) error {
+func (m *MockControl) InsertLogTx(tx *sql.Tx, userId int, date time.Time, amount int, description string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InsertLogTx", tx, userId, date, amount, description)
 	ret0, _ := ret[0].(error)
@@ -170,7 +170,7 @@ func (mr *MockControlMockRecorder) InsertMoneyReserveAccountsTx(tx, userId inter
 }
 
 // InsertMoneyReserveDetailsTx mocks base method.
-func (m *MockControl) InsertMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date string) error {
+func (m *MockControl) InsertMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date time.Time) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InsertMoneyReserveDetailsTx", tx, userId, serviceId, orderId, amount, date)
 	ret0, _ := ret[0].(error)
@@ -184,7 +184,7 @@ func (mr *MockControlMockRecorder) InsertMoneyReserveDetailsTx(tx, userId, servi
 }
 
 // InsertReportTx mocks base method.
-func (m *MockControl) InsertReportTx(tx *sql.Tx, userId, serviceId, amount int, date string) error {
+func (m *MockControl) InsertReportTx(tx *sql.Tx, userId, serviceId, amount int, date time.Time) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InsertReportTx", tx, userId, serviceId, amount, date)
 	ret0, _ := ret[0].(error)

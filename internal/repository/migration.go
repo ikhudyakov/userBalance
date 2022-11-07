@@ -24,16 +24,17 @@ func Migration(conf *c.Config, up, down bool) error {
 		return err
 	}
 
+	if down {
+		if err := m.Down(); err != nil {
+			return err
+		}
+	}
+
 	if up {
 		if err := m.Up(); err != nil {
 			return err
 		}
 	}
 
-	if down {
-		if err := m.Down(); err != nil {
-			return err
-		}
-	}
 	return err
 }
