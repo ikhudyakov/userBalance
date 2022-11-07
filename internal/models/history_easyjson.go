@@ -103,7 +103,9 @@ func easyjson40eb0d12DecodeUserbalanceInternalModels1(in *jlexer.Lexer, out *His
 		}
 		switch key {
 		case "date":
-			out.Date = string(in.String())
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Date).UnmarshalJSON(data))
+			}
 		case "amount":
 			out.Amount = int(in.Int())
 		case "description":
@@ -125,7 +127,7 @@ func easyjson40eb0d12EncodeUserbalanceInternalModels1(out *jwriter.Writer, in Hi
 	{
 		const prefix string = ",\"date\":"
 		out.RawString(prefix[1:])
-		out.String(string(in.Date))
+		out.Raw((in.Date).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"amount\":"

@@ -10,7 +10,6 @@ import (
 	c "userbalance/internal/config"
 	"userbalance/internal/models"
 	"userbalance/internal/repository"
-	"userbalance/internal/utility"
 )
 
 const layout string = "2006-01-02"
@@ -48,12 +47,8 @@ func (c *ControlService) ReplenishmentBalance(replenishment *models.Replenishmen
 	var user *models.User
 
 	date, _ := time.Parse(layout, replenishment.Date)
-
-	if time.Time.IsZero(date) {
-		replenishment.Date = time.Now().Format(layout)
-
-	} else {
-		replenishment.Date = date.Format(layout)
+	if date.IsZero() {
+		date = time.Now()
 	}
 
 	tx, err = c.db.Begin()
@@ -72,7 +67,7 @@ func (c *ControlService) ReplenishmentBalance(replenishment *models.Replenishmen
 			tx.Rollback()
 			return err
 		}
-		if err = c.repo.InsertLogTx(tx, replenishment.UserID, replenishment.Date, replenishment.Amount, "Пополнение баланса"); err != nil {
+		if err = c.repo.InsertLogTx(tx, replenishment.UserID, date, replenishment.Amount, "Пополнение баланса"); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -85,7 +80,7 @@ func (c *ControlService) ReplenishmentBalance(replenishment *models.Replenishmen
 			tx.Rollback()
 			return err
 		}
-		if err = c.repo.InsertLogTx(tx, replenishment.UserID, replenishment.Date, replenishment.Amount, "Пополнение баланса"); err != nil {
+		if err = c.repo.InsertLogTx(tx, replenishment.UserID, date, replenishment.Amount, "Пополнение баланса"); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -100,10 +95,8 @@ func (c *ControlService) Transfer(money *models.Money) error {
 	var fromUser, toUser *models.User
 
 	date, _ := time.Parse(layout, money.Date)
-	if time.Time.IsZero(date) {
-		money.Date = time.Now().Format(layout)
-	} else {
-		money.Date = date.Format(layout)
+	if date.IsZero() {
+		date = time.Now()
 	}
 
 	tx, err = c.db.Begin()
@@ -137,7 +130,7 @@ func (c *ControlService) Transfer(money *models.Money) error {
 		tx.Rollback()
 		return err
 	}
-	if err = c.repo.InsertLogTx(tx, money.FromUserID, money.Date, money.Amount, fmt.Sprintf("Перевод средств пользователю %d", money.ToUserID)); err != nil {
+	if err = c.repo.InsertLogTx(tx, money.FromUserID, date, money.Amount, fmt.Sprintf("Перевод средств пользователю %d", money.ToUserID)); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -146,7 +139,7 @@ func (c *ControlService) Transfer(money *models.Money) error {
 		tx.Rollback()
 		return err
 	}
-	if err = c.repo.InsertLogTx(tx, money.ToUserID, money.Date, money.Amount, fmt.Sprintf("Перевод средств от пользователя %d", money.FromUserID)); err != nil {
+	if err = c.repo.InsertLogTx(tx, money.ToUserID, date, money.Amount, fmt.Sprintf("Перевод средств от пользователя %d", money.FromUserID)); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -162,10 +155,8 @@ func (c *ControlService) Reservation(transaction *models.Transaction) error {
 	var reservBalance int
 
 	date, _ := time.Parse(layout, transaction.Date)
-	if time.Time.IsZero(date) {
-		transaction.Date = time.Now().Format(layout)
-	} else {
-		transaction.Date = date.Format(layout)
+	if date.IsZero() {
+		date = time.Now()
 	}
 
 	if service, err = c.repo.GetService(transaction.ServiceID); err != nil {
@@ -176,12 +167,13 @@ func (c *ControlService) Reservation(transaction *models.Transaction) error {
 		return errors.New("услуга не найдена")
 	}
 
-	if reservBalance, err = c.repo.GetBalanceReserveAccounts(transaction.UserID); err != nil {
+	tx, err = c.db.Begin()
+	if err != nil {
 		return err
 	}
 
-	tx, err = c.db.Begin()
-	if err != nil {
+	if reservBalance, err = c.repo.GetBalanceReserveAccountsTx(tx, transaction.UserID); err != nil {
+		tx.Rollback()
 		return err
 	}
 
@@ -208,12 +200,12 @@ func (c *ControlService) Reservation(transaction *models.Transaction) error {
 		return err
 	}
 
-	if err = c.repo.InsertMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date); err != nil {
+	if err = c.repo.InsertMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, date); err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	if err = c.repo.InsertLogTx(tx, transaction.UserID, transaction.Date, transaction.Amount, fmt.Sprintf("Заказ №%d, услуга \"%s\"", transaction.OrderID, service)); err != nil {
+	if err = c.repo.InsertLogTx(tx, transaction.UserID, date, transaction.Amount, fmt.Sprintf("Заказ №%d, услуга \"%s\"", transaction.OrderID, service)); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -229,10 +221,8 @@ func (c *ControlService) CancelReservation(transaction *models.Transaction) erro
 	var reservBalance int
 
 	date, _ := time.Parse(layout, transaction.Date)
-	if time.Time.IsZero(date) {
-		transaction.Date = time.Now().Format(layout)
-	} else {
-		transaction.Date = date.Format(layout)
+	if date.IsZero() {
+		date = time.Now()
 	}
 
 	if service, err = c.repo.GetService(transaction.ServiceID); err != nil {
@@ -243,12 +233,13 @@ func (c *ControlService) CancelReservation(transaction *models.Transaction) erro
 		return errors.New("услуга не найдена")
 	}
 
-	if reservBalance, err = c.repo.GetBalanceReserveAccounts(transaction.UserID); err != nil {
+	tx, err = c.db.Begin()
+	if err != nil {
 		return err
 	}
 
-	tx, err = c.db.Begin()
-	if err != nil {
+	if reservBalance, err = c.repo.GetBalanceReserveAccountsTx(tx, transaction.UserID); err != nil {
+		tx.Rollback()
 		return err
 	}
 
@@ -261,7 +252,7 @@ func (c *ControlService) CancelReservation(transaction *models.Transaction) erro
 		return errors.New("пользователь не найден")
 	}
 
-	r, err := c.repo.DeleteMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
+	r, err := c.repo.DeleteMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, date)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -271,7 +262,7 @@ func (c *ControlService) CancelReservation(transaction *models.Transaction) erro
 		return errors.New("по указанным критериям не было резерва")
 	}
 
-	if err = c.repo.InsertLogTx(tx, transaction.UserID, transaction.Date, transaction.Amount, fmt.Sprintf("Отмена заказа №%d, услуга \"%s\"", transaction.OrderID, service)); err != nil {
+	if err = c.repo.InsertLogTx(tx, transaction.UserID, date, transaction.Amount, fmt.Sprintf("Отмена заказа №%d, услуга \"%s\"", transaction.OrderID, service)); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -295,14 +286,8 @@ func (c *ControlService) Confirmation(transaction *models.Transaction) error {
 	var reservBalance int
 
 	date, _ := time.Parse(layout, transaction.Date)
-	if time.Time.IsZero(date) {
-		transaction.Date = time.Now().Format(layout)
-	} else {
-		transaction.Date = date.Format(layout)
-	}
-
-	if reservBalance, err = c.repo.GetBalanceReserveAccounts(transaction.UserID); err != nil {
-		return err
+	if date.IsZero() {
+		date = time.Now()
 	}
 
 	tx, err = c.db.Begin()
@@ -310,7 +295,12 @@ func (c *ControlService) Confirmation(transaction *models.Transaction) error {
 		return err
 	}
 
-	r, err := c.repo.DeleteMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, transaction.Date)
+	if reservBalance, err = c.repo.GetBalanceReserveAccountsTx(tx, transaction.UserID); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	r, err := c.repo.DeleteMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, date)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -325,7 +315,7 @@ func (c *ControlService) Confirmation(transaction *models.Transaction) error {
 		return err
 	}
 
-	if err = c.repo.InsertReportTx(tx, transaction.UserID, transaction.ServiceID, transaction.Amount, transaction.Date); err != nil {
+	if err = c.repo.InsertReportTx(tx, transaction.UserID, transaction.ServiceID, transaction.Amount, date); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -340,15 +330,8 @@ func (c *ControlService) CreateReport(requestReport *models.RequestReport) (stri
 	var path string
 	var dir string = "file"
 
-	from, _ := time.Parse(layout, requestReport.FromDate)
-	to, _ := time.Parse(layout, requestReport.ToDate)
-
-	if from.IsZero() {
-		from, _ = time.Parse(layout, utility.BeginningOfMonth().Format(layout))
-	}
-	if to.IsZero() {
-		to, _ = time.Parse(layout, utility.EndOfMonth().Format(layout))
-	}
+	from := time.Date(requestReport.Year, time.Month(requestReport.Month), 1, 0, 0, 0, 0, time.Local)
+	to := from.AddDate(0, 1, 0).Add(-time.Nanosecond)
 
 	if report, err = c.repo.GetReport(from, to); err != nil {
 		return path, err
@@ -372,7 +355,7 @@ func (c *ControlService) CreateReport(requestReport *models.RequestReport) (stri
 		}
 	}
 
-	path = fmt.Sprintf("%s:%s/%s", c.conf.Host, c.conf.Port, file.Name())
+	path = fmt.Sprintf("%s/%s", c.conf.Host, file.Name())
 
 	return path, err
 }

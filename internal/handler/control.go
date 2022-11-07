@@ -196,6 +196,11 @@ func (h *Handler) createReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = requestReport.Validate(); err != nil {
+		Error(err, w, http.StatusBadRequest)
+		return
+	}
+
 	if reportPath, err = h.services.CreateReport(&requestReport); err != nil {
 		Error(err, w, http.StatusInternalServerError)
 		return

@@ -16,7 +16,7 @@ func Connect(conf *c.Config) (*sql.DB, error) {
 
 	switch conf.ConnectionType {
 	case "postgres":
-		conn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", conf.Host, conf.DBPort, conf.User, conf.Password, conf.DBname)
+		conn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", conf.DBHost, conf.DBPort, conf.User, conf.Password, conf.DBname)
 		if db, err = sql.Open(conf.ConnectionType, conn); err != nil {
 			return nil, err
 		}
@@ -25,7 +25,7 @@ func Connect(conf *c.Config) (*sql.DB, error) {
 			User:   conf.User,
 			Passwd: conf.Password,
 			Net:    "tcp",
-			Addr:   fmt.Sprintf("%s:%d", conf.Host, conf.DBPort),
+			Addr:   fmt.Sprintf("%s:%d", conf.DBHost, conf.DBPort),
 			DBName: conf.DBname,
 		}
 		if db, err = sql.Open(conf.ConnectionType, cfg.FormatDSN()); err != nil {

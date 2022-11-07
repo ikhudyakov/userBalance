@@ -65,7 +65,6 @@ func (m *ControlPosgres) GetUserForUpdate(tx *sql.Tx, userId int) (*models.User,
 	}
 
 	return &models.User{Id: id, Balance: balance}, err
-
 }
 
 func (m *ControlPosgres) GetReport(fromDate time.Time, toDate time.Time) (map[string]int, error) {
@@ -125,7 +124,7 @@ func (m *ControlPosgres) GetHistory(requestHistory *models.RequestHistory) ([]mo
 			return history, err
 		}
 		h := models.History{
-			Date:        date.Format("02/01/2006"),
+			Date:        date,
 			Amount:      amount,
 			Description: description,
 		}
@@ -163,7 +162,7 @@ func (m *ControlPosgres) InsertUserTx(tx *sql.Tx, userId int, amount int) error 
 	return err
 }
 
-func (m *ControlPosgres) InsertLogTx(tx *sql.Tx, userId int, date string, amount int, description string) error {
+func (m *ControlPosgres) InsertLogTx(tx *sql.Tx, userId int, date time.Time, amount int, description string) error {
 
 	stmt, err := tx.Prepare(`INSERT INTO logs (user_id, date, amount, description) VALUES ($1, $2, $3, $4);`)
 	if err != nil {
@@ -205,13 +204,20 @@ func (m *ControlPosgres) UpdateMoneyReserveAccountsTx(tx *sql.Tx, userId int, am
 	return err
 }
 
-func (m *ControlPosgres) GetBalanceReserveAccounts(userId int) (int, error) {
+func (m *ControlPosgres) GetBalanceReserveAccountsTx(tx *sql.Tx, userId int) (int, error) {
 	var balance int
 
-	rows, err := m.DB.Query("SELECT balance FROM money_reserve_accounts WHERE user_id = $1", userId)
+	stmt, err := tx.Prepare(`SELECT balance FROM money_reserve_accounts WHERE user_id = $1 FOR UPDATE;`)
 	if err != nil {
 		return 0, err
 	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query(userId)
+	if err != nil {
+		return 0, err
+	}
+
 	defer rows.Close()
 
 	if rows.Next() {
@@ -220,10 +226,11 @@ func (m *ControlPosgres) GetBalanceReserveAccounts(userId int) (int, error) {
 			return 0, err
 		}
 	}
+
 	return balance, err
 }
 
-func (m *ControlPosgres) InsertMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date string) error {
+func (m *ControlPosgres) InsertMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date time.Time) error {
 
 	stmt, err := tx.Prepare(`INSERT INTO money_reserve_details (user_id, service_id, order_id, amount, date) VALUES ($1, $2, $3, $4, $5);`)
 	if err != nil {
@@ -237,7 +244,7 @@ func (m *ControlPosgres) InsertMoneyReserveDetailsTx(tx *sql.Tx, userId, service
 	return err
 }
 
-func (m *ControlPosgres) DeleteMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date string) (int64, error) {
+func (m *ControlPosgres) DeleteMoneyReserveDetailsTx(tx *sql.Tx, userId, serviceId, orderId, amount int, date time.Time) (int64, error) {
 
 	stmt, err := tx.Prepare(`
 			DELETE FROM money_reserve_details 
@@ -259,7 +266,7 @@ func (m *ControlPosgres) DeleteMoneyReserveDetailsTx(tx *sql.Tx, userId, service
 	return result.RowsAffected()
 }
 
-func (m *ControlPosgres) InsertReportTx(tx *sql.Tx, userId, serviceId, amount int, date string) error {
+func (m *ControlPosgres) InsertReportTx(tx *sql.Tx, userId, serviceId, amount int, date time.Time) error {
 
 	stmt, err := tx.Prepare(`INSERT INTO report (user_id, service_id, amount, date) VALUES ($1, $2, $3, $4);`)
 	if err != nil {

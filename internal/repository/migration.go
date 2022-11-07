@@ -17,7 +17,7 @@ func Migration(conf *c.Config, up, down bool) error {
 			conf.ConnectionType,
 			conf.User,
 			conf.Password,
-			conf.Host,
+			conf.DBHost,
 			conf.DBPort,
 			conf.DBname))
 	if err != nil {

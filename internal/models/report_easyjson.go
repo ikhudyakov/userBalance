@@ -36,10 +36,10 @@ func easyjsonBd361432DecodeUserbalanceInternalModels(in *jlexer.Lexer, out *Requ
 			continue
 		}
 		switch key {
-		case "fromdate":
-			out.FromDate = string(in.String())
-		case "todate":
-			out.ToDate = string(in.String())
+		case "month":
+			out.Month = int(in.Int())
+		case "year":
+			out.Year = int(in.Int())
 		default:
 			in.SkipRecursive()
 		}
@@ -55,14 +55,14 @@ func easyjsonBd361432EncodeUserbalanceInternalModels(out *jwriter.Writer, in Req
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"fromdate\":"
+		const prefix string = ",\"month\":"
 		out.RawString(prefix[1:])
-		out.String(string(in.FromDate))
+		out.Int(int(in.Month))
 	}
 	{
-		const prefix string = ",\"todate\":"
+		const prefix string = ",\"year\":"
 		out.RawString(prefix)
-		out.String(string(in.ToDate))
+		out.Int(int(in.Year))
 	}
 	out.RawByte('}')
 }

@@ -1,7 +1,9 @@
 //go:generate easyjson -no_std_marshalers transaction.go
 package models
 
-import validation "github.com/go-ozzo/ozzo-validation"
+import (
+	validation "github.com/go-ozzo/ozzo-validation"
+)
 
 //easyjson:json
 type (

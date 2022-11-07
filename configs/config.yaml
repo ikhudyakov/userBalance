@@ -1,9 +1,9 @@
-host : "db"
+host : "localhost:8081"
+dbhost : "db"
 dbport : 5432
 user : "postgres"
 password : "postgres"
 dbname : "postgres"
-port : "8081"
 connectiontype : "postgres"
 contextimeout : 5
 migrationpath : "./migrations"

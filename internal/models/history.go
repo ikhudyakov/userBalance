@@ -1,14 +1,18 @@
 //go:generate easyjson -no_std_marshalers history.go
 package models
 
-import validation "github.com/go-ozzo/ozzo-validation"
+import (
+	"time"
+
+	validation "github.com/go-ozzo/ozzo-validation"
+)
 
 //easyjson:json
 type (
 	History struct {
-		Date        string `json:"date"`
-		Amount      int    `json:"amount"`
-		Description string `json:"description"`
+		Date        time.Time `json:"date"`
+		Amount      int       `json:"amount"`
+		Description string    `json:"description"`
 	}
 
 	Histories struct {

@@ -10,11 +10,11 @@ import (
 
 type Config struct {
 	Host           string `yaml:"host"`
+	DBHost         string `yaml:"dbhost"`
 	DBPort         int    `yaml:"dbport"`
 	User           string `yaml:"user"`
 	Password       string `yaml:"password"`
 	DBname         string `yaml:"dbname"`
-	Port           string `yaml:"port"`
 	ConnectionType string `yaml:"connectiontype"`
 	ContexTimeout  int    `yaml:"contextimeout"`
 	MigrationPath  string `yaml:"migrationpath"`

@@ -425,11 +425,11 @@ const docTemplate = `{
         "models.RequestReport": {
             "type": "object",
             "properties": {
-                "fromdate": {
-                    "type": "string"
+                "month": {
+                    "type": "integer"
                 },
-                "todate": {
-                    "type": "string"
+                "year": {
+                    "type": "integer"
                 }
             }
         },
