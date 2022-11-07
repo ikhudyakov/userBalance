@@ -47,7 +47,6 @@ func TestGetUser(t *testing.T) {
 				Balance: 100,
 			},
 			mockBehavior: func(args args, id, balance int) {
-
 				rows := sqlmock.NewRows([]string{"id", "balance"}).AddRow(id, balance)
 				mock.ExpectQuery("SELECT id, balance FROM users").WithArgs(args.userid).WillReturnRows(rows)
 			},
@@ -126,6 +125,7 @@ func TestGetUserForUpdate(t *testing.T) {
 			mockBehavior: func(args args, id, balance int) {
 				mock.ExpectBegin()
 				mock.ExpectPrepare("SELECT id, balance FROM users").ExpectQuery().WithArgs(args.userid).WillReturnError(errors.New("some error"))
+				mock.ExpectRollback()
 			},
 		},
 	}
@@ -183,7 +183,6 @@ func TestGetReport(t *testing.T) {
 			sum:   100,
 			want:  map[string]int{"Услуга №1": 100},
 			mockBehavior: func(args args, title string, sum int) {
-
 				rows := sqlmock.NewRows([]string{"title", "amount"}).AddRow(title, sum)
 				mock.ExpectQuery("SELECT(.*)").WithArgs(args.fromDate, args.toDate).WillReturnRows(rows)
 			},
@@ -193,7 +192,6 @@ func TestGetReport(t *testing.T) {
 			name:    "error",
 			wantErr: true,
 			mockBehavior: func(args args, title string, sum int) {
-
 				mock.ExpectQuery("SELECT(.*)").WithArgs(args.fromDate, args.toDate).WillReturnError(errors.New("some error"))
 			},
 		},
@@ -341,6 +339,7 @@ func TestUpdateBalanceTx(t *testing.T) {
 			mockBehavior: func(args args) {
 				mock.ExpectBegin()
 				mock.ExpectPrepare("UPDATE users").ExpectExec().WithArgs(args.amount, args.userid).WillReturnError(errors.New("error update"))
+				mock.ExpectRollback()
 			},
 		},
 	}
@@ -407,6 +406,7 @@ func TestInsertUserTx(t *testing.T) {
 			mockBehavior: func(args args) {
 				mock.ExpectBegin()
 				mock.ExpectPrepare("INSERT INTO users").ExpectExec().WithArgs(args.userid, args.amount).WillReturnError(errors.New("error insert"))
+				mock.ExpectRollback()
 			},
 		},
 	}
@@ -479,6 +479,7 @@ func TestInsertLogTx(t *testing.T) {
 			mockBehavior: func(args args) {
 				mock.ExpectBegin()
 				mock.ExpectPrepare("INSERT INTO logs").ExpectExec().WithArgs(args.userid, args.date, args.amount, args.description).WillReturnError(errors.New("error insert"))
+				mock.ExpectRollback()
 			},
 		},
 	}
@@ -544,6 +545,7 @@ func TestInsertMoneyReserveAccountsTx(t *testing.T) {
 			mockBehavior: func(args args) {
 				mock.ExpectBegin()
 				mock.ExpectPrepare("INSERT INTO money_reserve_accounts").ExpectExec().WithArgs(args.userid).WillReturnError(errors.New("error insert"))
+				mock.ExpectRollback()
 			},
 		},
 	}
@@ -609,6 +611,7 @@ func TestUpdateMoneyReserveAccountsTx(t *testing.T) {
 			mockBehavior: func(args args) {
 				mock.ExpectBegin()
 				mock.ExpectPrepare("UPDATE money_reserve_accounts").ExpectExec().WithArgs(args.amount, args.userid).WillReturnError(errors.New("error update"))
+				mock.ExpectRollback()
 			},
 		},
 	}
@@ -674,6 +677,7 @@ func TestGetBalanceReserveAccountsTx(t *testing.T) {
 			mockBehavior: func(args args, balance int) {
 				mock.ExpectBegin()
 				mock.ExpectPrepare("SELECT id, balance FROM users").ExpectQuery().WithArgs(args.userid).WillReturnError(errors.New("some error"))
+				mock.ExpectRollback()
 			},
 		},
 	}
@@ -761,6 +765,7 @@ func TestInsertMoneyReserveDetailsTx(t *testing.T) {
 					args.amount,
 					args.date).
 					WillReturnError(errors.New("error insert"))
+				mock.ExpectRollback()
 			},
 		},
 	}
@@ -853,7 +858,8 @@ func TestDeleteMoneyReserveDetailsTx(t *testing.T) {
 					args.orderId,
 					args.amount,
 					args.date).
-					WillReturnError(errors.New("error insert"))
+					WillReturnError(errors.New("error delete"))
+				mock.ExpectRollback()
 			},
 		},
 	}
@@ -938,6 +944,7 @@ func TestInsertReportTx(t *testing.T) {
 					args.serviceId,
 					args.amount,
 					args.date).WillReturnError(errors.New("error insert"))
+				mock.ExpectRollback()
 			},
 		},
 	}
