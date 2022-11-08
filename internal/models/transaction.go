@@ -33,7 +33,7 @@ func (r Replenishment) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(
 			&r.UserID,
-			validation.Required.Error("id пользователя не может быть <= 0"),
+			validation.Required.Error("id пользователя не может быть не указан либо <= 0"),
 			validation.Min(1).Error("id пользователя не может быть <= 0")),
 		validation.Field(
 			&r.Amount,
@@ -44,10 +44,10 @@ func (r Replenishment) Validate() error {
 func (m Money) Validate() error {
 	return validation.ValidateStruct(&m,
 		validation.Field(&m.FromUserID,
-			validation.Required.Error("id пользователя не может быть <= 0"),
+			validation.Required.Error("id пользователя не может быть не указан либо <= 0"),
 			validation.Min(1).Error("id пользователя не может быть <= 0")),
 		validation.Field(&m.ToUserID,
-			validation.Required.Error("id пользователя не может быть <= 0"),
+			validation.Required.Error("id пользователя не может быть не указан либо <= 0"),
 			validation.Min(1).Error("id пользователя не может быть <= 0"),
 			validation.NotIn(m.FromUserID).Error("невозможно перевести самому себе")),
 		validation.Field(&m.Amount,
@@ -58,7 +58,7 @@ func (m Money) Validate() error {
 func (t Transaction) Validate() error {
 	return validation.ValidateStruct(&t,
 		validation.Field(&t.UserID,
-			validation.Required.Error("id пользователя не может быть <= 0"),
+			validation.Required.Error("id пользователя не может быть не указан либо <= 0"),
 			validation.Min(1).Error("id пользователя не может быть <= 0")),
 		validation.Field(&t.Amount,
 			validation.Required.Error("стоимость услуги должна быть больше 0"),

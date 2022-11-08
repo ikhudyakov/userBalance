@@ -12,6 +12,6 @@ type User struct {
 func (u User) Validate() error {
 	return validation.ValidateStruct(&u,
 		validation.Field(&u.Id,
-			validation.Required.Error("id пользователя не может быть <= 0"),
+			validation.Required.Error("id пользователя не может быть не указан либо <= 0"),
 			validation.Min(1).Error("id пользователя не может быть <= 0")))
 }

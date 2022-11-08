@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 	"userbalance/internal/models"
 	"userbalance/internal/service"
 	mock_service "userbalance/internal/service/mocks"
@@ -63,7 +64,7 @@ func TestHandler_getBalance(t *testing.T) {
 			inputUser:           models.User{},
 			mockBehavior:        func(s *mock_service.MockControl, user models.User) {},
 			expectedStatusCode:  http.StatusBadRequest,
-			expectedRequestBody: `{"message":"id пользователя не может быть \u003c= 0"}`,
+			expectedRequestBody: `{"message":"userid: id пользователя не может быть не указан либо \u003c= 0."}`,
 		},
 	}
 
@@ -95,46 +96,47 @@ func TestHandler_getBalance(t *testing.T) {
 
 func TestHandler_replenishmentBalance(t *testing.T) {
 
-	type mockBehavior func(s *mock_service.MockControl, transaction models.Transaction)
+	type mockBehavior func(s *mock_service.MockControl, replenishment models.Replenishment)
 
 	testTable := []struct {
 		name                string
 		inputBody           string
-		inputTransaction    models.Transaction
+		inputReplenishment  models.Replenishment
 		mockBehavior        mockBehavior
 		expectedStatusCode  int
 		expectedRequestBody string
 	}{
 		{
 			name:      "OK",
-			inputBody: `{"userid":1,"amount":100,"serviceid":0,"orderid":0}`,
-			inputTransaction: models.Transaction{
-				UserID:    1,
-				Amount:    100,
-				ServiceID: 0,
-				OrderID:   0,
+			inputBody: `{"userid":1,"amount":100,"date":"2022-11-01"}`,
+			inputReplenishment: models.Replenishment{
+				UserID: 1,
+				Amount: 100,
+				Date:   "2022-11-01",
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
-				s.EXPECT().ReplenishmentBalance(&transaction).Return(nil)
+			mockBehavior: func(s *mock_service.MockControl, replenishment models.Replenishment) {
+				s.EXPECT().ReplenishmentBalance(&replenishment).Return(nil)
 			},
 			expectedStatusCode:  http.StatusOK,
 			expectedRequestBody: `{"message":"баланс пополнен"}`,
 		},
 
 		{
-			name:      "error",
-			inputBody: `{}`,
-			inputTransaction: models.Transaction{
-				UserID:    0,
-				Amount:    0,
-				ServiceID: 0,
-				OrderID:   0,
+			name:      "error userId <= 0",
+			inputBody: `{"userid":-1,"amount":100,"date":"2022-11-01"}`,
+			mockBehavior: func(s *mock_service.MockControl, replenishment models.Replenishment) {
 			},
-			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
-				s.EXPECT().ReplenishmentBalance(&transaction).Return(errors.New("replenishment balance error"))
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"userid: id пользователя не может быть \u003c= 0."}`,
+		},
+
+		{
+			name:      "error amount <= 0",
+			inputBody: `{"userid":1,"amount":-100,"date":"2022-11-01"}`,
+			mockBehavior: func(s *mock_service.MockControl, replenishment models.Replenishment) {
 			},
-			expectedStatusCode:  http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"replenishment balance error"}`,
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"amount: сумма пополнения должна быть больше 0."}`,
 		},
 	}
 
@@ -144,7 +146,7 @@ func TestHandler_replenishmentBalance(t *testing.T) {
 			defer c.Finish()
 
 			control := mock_service.NewMockControl(c)
-			testCase.mockBehavior(control, testCase.inputTransaction)
+			testCase.mockBehavior(control, testCase.inputReplenishment)
 
 			services := &service.Service{Control: control}
 			h := NewHandler(services)
@@ -193,19 +195,35 @@ func TestHandler_transfer(t *testing.T) {
 		},
 
 		{
-			name:      "error",
-			inputBody: `{}`,
-			inputMoney: models.Money{
-				FromUserID: 0,
-				ToUserID:   0,
-				Amount:     0,
-				Date:       "",
-			},
-			mockBehavior: func(s *mock_service.MockControl, money models.Money) {
-				s.EXPECT().Transfer(&money).Return(errors.New("transfer error"))
-			},
-			expectedStatusCode:  http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"transfer error"}`,
+			name:                "error fromUserId <=0",
+			inputBody:           `{"fromuserid":-1,"touserid":2,"amount":100,"date":"2022-08-01"}`,
+			mockBehavior:        func(s *mock_service.MockControl, money models.Money) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"fromuserid: id пользователя не может быть \u003c= 0."}`,
+		},
+
+		{
+			name:                "error toUserId <=0",
+			inputBody:           `{"fromuserid":1,"touserid":-2,"amount":100,"date":"2022-08-01"}`,
+			mockBehavior:        func(s *mock_service.MockControl, money models.Money) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"touserid: id пользователя не может быть \u003c= 0."}`,
+		},
+
+		{
+			name:                "error toUserId == fromUserId",
+			inputBody:           `{"fromuserid":1,"touserid":1,"amount":100,"date":"2022-08-01"}`,
+			mockBehavior:        func(s *mock_service.MockControl, money models.Money) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"touserid: невозможно перевести самому себе."}`,
+		},
+
+		{
+			name:                "error amount <=0",
+			inputBody:           `{"fromuserid":1,"touserid":2,"amount":-100,"date":"2022-08-01"}`,
+			mockBehavior:        func(s *mock_service.MockControl, money models.Money) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"amount: сумма перевода должна быть больше 0."}`,
 		},
 	}
 
@@ -257,28 +275,22 @@ func TestHandler_getHistory(t *testing.T) {
 			},
 			mockBehavior: func(s *mock_service.MockControl, requestHistory models.RequestHistory) {
 				s.EXPECT().GetHistory(&requestHistory).Return([]models.History{{
-					Date:        "01/08/2022",
+					Date:        time.Date(2022, 11, 01, 0, 0, 0, 0, time.Local),
 					Amount:      500,
 					Description: "Пополнение баланса",
 				}}, nil)
 			},
 			expectedStatusCode:  http.StatusOK,
-			expectedRequestBody: `{"entity":[{"date":"01/08/2022","amount":500,"description":"Пополнение баланса"}]}`,
+			expectedRequestBody: `{"entity":[{"date":"2022-11-01T00:00:00+03:00","amount":500,"description":"Пополнение баланса"}]}`,
 		},
 
 		{
-			name:      "error",
+			name:      "error userId <= 0",
 			inputBody: `{"userid":0,"sortfield":"","direction":""}`,
-			inputRequestHistory: models.RequestHistory{
-				UserID:    0,
-				SortField: "",
-				Direction: "",
-			},
 			mockBehavior: func(s *mock_service.MockControl, requestHistory models.RequestHistory) {
-				s.EXPECT().GetHistory(&requestHistory).Return(nil, errors.New("history error"))
 			},
-			expectedStatusCode:  http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"history error"}`,
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"userid: id пользователя не может быть \u003c= 0."}`,
 		},
 	}
 
@@ -322,10 +334,10 @@ func TestHandler_createReport(t *testing.T) {
 	}{
 		{
 			name:      "OK",
-			inputBody: `{"fromdate":"2022-08-01","todate":"2022-08-20"}`,
+			inputBody: `{"month":11,"year":2022}`,
 			inputRequestReport: models.RequestReport{
-				FromDate: "2022-08-01",
-				ToDate:   "2022-08-20",
+				Month: 11,
+				Year:  2022,
 			},
 			mockBehavior: func(s *mock_service.MockControl, requestReport models.RequestReport) {
 				s.EXPECT().CreateReport(&requestReport).Return("localhost:8081/file/report.cvs", nil)
@@ -335,17 +347,21 @@ func TestHandler_createReport(t *testing.T) {
 		},
 
 		{
-			name:      "error",
-			inputBody: `{"fromdate":"","todate":""}`,
-			inputRequestReport: models.RequestReport{
-				FromDate: "",
-				ToDate:   "",
-			},
+			name:      "error wrong month",
+			inputBody: `{"month":22,"year":2022}`,
 			mockBehavior: func(s *mock_service.MockControl, requestReport models.RequestReport) {
-				s.EXPECT().CreateReport(&requestReport).Return("", errors.New("report error"))
 			},
-			expectedStatusCode:  http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"report error"}`,
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"month: месяца не может быть \u003e 12."}`,
+		},
+
+		{
+			name:      "error wrong year",
+			inputBody: `{"month":11,"year":1400}`,
+			mockBehavior: func(s *mock_service.MockControl, requestReport models.RequestReport) {
+			},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"year: неверно указан год."}`,
 		},
 	}
 
@@ -404,19 +420,35 @@ func TestHandler_reservation(t *testing.T) {
 		},
 
 		{
-			name:      "error",
-			inputBody: `{"userid":0,"amount":0,"serviceid":0,"orderid":0}`,
-			inputTransaction: models.Transaction{
-				UserID:    0,
-				Amount:    0,
-				ServiceID: 0,
-				OrderID:   0,
-			},
-			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
-				s.EXPECT().Reservation(&transaction).Return(errors.New("reservstion error"))
-			},
-			expectedStatusCode:  http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"reservstion error"}`,
+			name:                "error user <= 0",
+			inputBody:           `{"userid":0,"amount":100,"serviceid":1,"orderid":1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"userid: id пользователя не может быть не указан либо \u003c= 0."}`,
+		},
+
+		{
+			name:                "error amount <= 0",
+			inputBody:           `{"userid":1,"amount":0,"serviceid":1,"orderid":1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"amount: стоимость услуги должна быть больше 0."}`,
+		},
+
+		{
+			name:                "error serviceid <= 0",
+			inputBody:           `{"userid":1,"amount":100,"serviceid":-1,"orderid":1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"serviceid: id услуги не может быть \u003c= 0."}`,
+		},
+
+		{
+			name:                "error orderid <= 0",
+			inputBody:           `{"userid":1,"amount":100,"serviceid":1,"orderid":-1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"orderid: номер заказа не может быть \u003c= 0."}`,
 		},
 	}
 
@@ -475,19 +507,35 @@ func TestHandler_confirmation(t *testing.T) {
 		},
 
 		{
-			name:      "error",
-			inputBody: `{"userid":0,"amount":0,"serviceid":0,"orderid":0}`,
-			inputTransaction: models.Transaction{
-				UserID:    0,
-				Amount:    0,
-				ServiceID: 0,
-				OrderID:   0,
-			},
-			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
-				s.EXPECT().Confirmation(&transaction).Return(errors.New("confirmation error"))
-			},
-			expectedStatusCode:  http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"confirmation error"}`,
+			name:                "error user <= 0",
+			inputBody:           `{"userid":0,"amount":100,"serviceid":1,"orderid":1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"userid: id пользователя не может быть не указан либо \u003c= 0."}`,
+		},
+
+		{
+			name:                "error amount <= 0",
+			inputBody:           `{"userid":1,"amount":0,"serviceid":1,"orderid":1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"amount: стоимость услуги должна быть больше 0."}`,
+		},
+
+		{
+			name:                "error serviceid <= 0",
+			inputBody:           `{"userid":1,"amount":100,"serviceid":-1,"orderid":1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"serviceid: id услуги не может быть \u003c= 0."}`,
+		},
+
+		{
+			name:                "error orderid <= 0",
+			inputBody:           `{"userid":1,"amount":100,"serviceid":1,"orderid":-1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"orderid: номер заказа не может быть \u003c= 0."}`,
 		},
 	}
 
@@ -546,19 +594,35 @@ func TestHandler_cancelReservation(t *testing.T) {
 		},
 
 		{
-			name:      "error",
-			inputBody: `{"userid":0,"amount":0,"serviceid":0,"orderid":0}`,
-			inputTransaction: models.Transaction{
-				UserID:    0,
-				Amount:    0,
-				ServiceID: 0,
-				OrderID:   0,
-			},
-			mockBehavior: func(s *mock_service.MockControl, transaction models.Transaction) {
-				s.EXPECT().CancelReservation(&transaction).Return(errors.New("cancel error"))
-			},
-			expectedStatusCode:  http.StatusInternalServerError,
-			expectedRequestBody: `{"message":"cancel error"}`,
+			name:                "error user <= 0",
+			inputBody:           `{"userid":0,"amount":100,"serviceid":1,"orderid":1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"userid: id пользователя не может быть не указан либо \u003c= 0."}`,
+		},
+
+		{
+			name:                "error amount <= 0",
+			inputBody:           `{"userid":1,"amount":0,"serviceid":1,"orderid":1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"amount: стоимость услуги должна быть больше 0."}`,
+		},
+
+		{
+			name:                "error serviceid <= 0",
+			inputBody:           `{"userid":1,"amount":100,"serviceid":-1,"orderid":1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"serviceid: id услуги не может быть \u003c= 0."}`,
+		},
+
+		{
+			name:                "error orderid <= 0",
+			inputBody:           `{"userid":1,"amount":100,"serviceid":1,"orderid":-1}`,
+			mockBehavior:        func(s *mock_service.MockControl, transaction models.Transaction) {},
+			expectedStatusCode:  http.StatusBadRequest,
+			expectedRequestBody: `{"message":"orderid: номер заказа не может быть \u003c= 0."}`,
 		},
 	}
 

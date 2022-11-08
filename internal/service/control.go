@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -78,7 +77,6 @@ func (c *ControlService) ReplenishmentBalance(replenishment *models.Replenishmen
 			return err
 		}
 		if err = c.repo.InsertMoneyReserveAccountsTx(tx, replenishment.UserID); err != nil {
-			log.Println(tx)
 			tx.Rollback()
 			return err
 		}
@@ -174,11 +172,6 @@ func (c *ControlService) Reservation(transaction *models.Transaction) error {
 		return err
 	}
 
-	if reservBalance, err = c.repo.GetBalanceReserveAccountsTx(tx, transaction.UserID); err != nil {
-		tx.Rollback()
-		return err
-	}
-
 	if user, err = c.repo.GetUserForUpdate(tx, transaction.UserID); err != nil {
 		tx.Rollback()
 		return err
@@ -190,6 +183,11 @@ func (c *ControlService) Reservation(transaction *models.Transaction) error {
 	if user.Balance-transaction.Amount < 0 {
 		tx.Rollback()
 		return errors.New("недостаточно средств")
+	}
+
+	if reservBalance, err = c.repo.GetBalanceReserveAccountsTx(tx, transaction.UserID); err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	if err = c.repo.UpdateBalanceTx(tx, transaction.UserID, user.Balance-transaction.Amount); err != nil {
@@ -240,11 +238,6 @@ func (c *ControlService) CancelReservation(transaction *models.Transaction) erro
 		return err
 	}
 
-	if reservBalance, err = c.repo.GetBalanceReserveAccountsTx(tx, transaction.UserID); err != nil {
-		tx.Rollback()
-		return err
-	}
-
 	if user, err = c.repo.GetUserForUpdate(tx, transaction.UserID); err != nil {
 		tx.Rollback()
 		return err
@@ -252,6 +245,11 @@ func (c *ControlService) CancelReservation(transaction *models.Transaction) erro
 	if user == nil {
 		tx.Rollback()
 		return errors.New("пользователь не найден")
+	}
+
+	if reservBalance, err = c.repo.GetBalanceReserveAccountsTx(tx, transaction.UserID); err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	r, err := c.repo.DeleteMoneyReserveDetailsTx(tx, transaction.UserID, transaction.ServiceID, transaction.OrderID, transaction.Amount, date)
@@ -352,6 +350,7 @@ func (c *ControlService) CreateReport(requestReport *models.RequestReport) (stri
 
 	for k, v := range report {
 		_, err = file.WriteString(fmt.Sprintf("%s;%v\n", k, v))
+
 		if err != nil {
 			return path, err
 		}
