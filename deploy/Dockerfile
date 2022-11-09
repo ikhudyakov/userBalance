@@ -8,4 +8,4 @@ COPY ./ ./
 RUN go mod download
 RUN go build -o userbalance ./cmd
 
-RUN ./userbalance -migrationup
+CMD ["./userbalance", "-migrationup"]
