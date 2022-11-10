@@ -65,7 +65,7 @@ func main() {
 	server.conf = conf
 
 	go func() {
-		if err := server.Run(conf.Host, handlers.Init()); err != nil {
+		if err := server.Run(conf.Port, handlers.Init()); err != nil {
 			log.Fatalf("ошибка при запуске http сервера: %s", err.Error())
 		}
 	}()

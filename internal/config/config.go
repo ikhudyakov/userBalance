@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	Host           string `yaml:"host"`
+	Port           string `yaml:"port"`
 	DBHost         string `yaml:"dbhost"`
 	DBPort         int    `yaml:"dbport"`
 	User           string `yaml:"user"`

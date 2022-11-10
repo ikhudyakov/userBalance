@@ -1,4 +1,5 @@
-host : ":8081"
+host : "localhost"
+port : ":8081"
 dbhost : "db"
 dbport : 5432
 user : "postgres"

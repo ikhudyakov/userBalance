@@ -356,7 +356,19 @@ func (c *ControlService) CreateReport(requestReport *models.RequestReport) (stri
 		}
 	}
 
-	path = fmt.Sprintf("%s/%s", c.conf.Host, file.Name())
+	var host string
+
+	if c.conf.Host == "" {
+		host = "localhost"
+	} else {
+		host = c.conf.Host
+	}
+
+	if c.conf.Port != "" {
+		host += c.conf.Port
+	}
+
+	path = fmt.Sprintf("%s/%s", host, file.Name())
 
 	return path, err
 }
