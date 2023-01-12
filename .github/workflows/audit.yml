@@ -21,6 +21,9 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
 
+    - name: Download dependencies
+      run: go mod download
+
     - name: Run handler tests
       run: go test ./internal/handler/ -v
 
