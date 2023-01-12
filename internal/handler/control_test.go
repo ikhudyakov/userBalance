@@ -275,7 +275,7 @@ func TestHandler_getHistory(t *testing.T) {
 			},
 			mockBehavior: func(s *mock_service.MockControl, requestHistory models.RequestHistory) {
 				s.EXPECT().GetHistory(&requestHistory).Return([]models.History{{
-					Date:        time.Date(2022, 11, 01, 0, 0, 0, 0, time.Local),
+					Date:        time.Date(2022, 11, 01, 0, 0, 0, 0, time.UTC),
 					Amount:      500,
 					Description: "Пополнение баланса",
 				}}, nil)
