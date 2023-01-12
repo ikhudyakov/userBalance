@@ -281,7 +281,7 @@ func TestHandler_getHistory(t *testing.T) {
 				}}, nil)
 			},
 			expectedStatusCode:  http.StatusOK,
-			expectedRequestBody: `{"entity":[{"date":"2022-11-01T00:00:00+03:00","amount":500,"description":"Пополнение баланса"}]}`,
+			expectedRequestBody: `{"entity":[{"date":"2022-11-01T00:00:00Z","amount":500,"description":"Пополнение баланса"}]}`,
 		},
 
 		{
