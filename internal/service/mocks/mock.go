@@ -6,7 +6,7 @@ package mock_service
 
 import (
 	reflect "reflect"
-	models "userbalance/internal/models"
+	api "userbalance/pkg/api"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -35,7 +35,7 @@ func (m *MockControl) EXPECT() *MockControlMockRecorder {
 }
 
 // CancelReservation mocks base method.
-func (m *MockControl) CancelReservation(transaction *models.Transaction) error {
+func (m *MockControl) CancelReservation(transaction *api.Transaction) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelReservation", transaction)
 	ret0, _ := ret[0].(error)
@@ -49,7 +49,7 @@ func (mr *MockControlMockRecorder) CancelReservation(transaction interface{}) *g
 }
 
 // Confirmation mocks base method.
-func (m *MockControl) Confirmation(transaction *models.Transaction) error {
+func (m *MockControl) Confirmation(transaction *api.Transaction) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Confirmation", transaction)
 	ret0, _ := ret[0].(error)
@@ -63,7 +63,7 @@ func (mr *MockControlMockRecorder) Confirmation(transaction interface{}) *gomock
 }
 
 // CreateReport mocks base method.
-func (m *MockControl) CreateReport(requestReport *models.RequestReport) (string, error) {
+func (m *MockControl) CreateReport(requestReport *api.RequestReport) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateReport", requestReport)
 	ret0, _ := ret[0].(string)
@@ -78,10 +78,10 @@ func (mr *MockControlMockRecorder) CreateReport(requestReport interface{}) *gomo
 }
 
 // GetBalance mocks base method.
-func (m *MockControl) GetBalance(userId int) (*models.User, error) {
+func (m *MockControl) GetBalance(userId int32) (*api.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBalance", userId)
-	ret0, _ := ret[0].(*models.User)
+	ret0, _ := ret[0].(*api.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -93,10 +93,10 @@ func (mr *MockControlMockRecorder) GetBalance(userId interface{}) *gomock.Call {
 }
 
 // GetHistory mocks base method.
-func (m *MockControl) GetHistory(requestHistory *models.RequestHistory) ([]models.History, error) {
+func (m *MockControl) GetHistory(requestHistory *api.RequestHistory) ([]*api.History, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHistory", requestHistory)
-	ret0, _ := ret[0].([]models.History)
+	ret0, _ := ret[0].([]*api.History)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -108,7 +108,7 @@ func (mr *MockControlMockRecorder) GetHistory(requestHistory interface{}) *gomoc
 }
 
 // ReplenishmentBalance mocks base method.
-func (m *MockControl) ReplenishmentBalance(replenishment *models.Replenishment) error {
+func (m *MockControl) ReplenishmentBalance(replenishment *api.Replenishment) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReplenishmentBalance", replenishment)
 	ret0, _ := ret[0].(error)
@@ -122,7 +122,7 @@ func (mr *MockControlMockRecorder) ReplenishmentBalance(replenishment interface{
 }
 
 // Reservation mocks base method.
-func (m *MockControl) Reservation(transaction *models.Transaction) error {
+func (m *MockControl) Reservation(transaction *api.Transaction) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Reservation", transaction)
 	ret0, _ := ret[0].(error)
@@ -136,7 +136,7 @@ func (mr *MockControlMockRecorder) Reservation(transaction interface{}) *gomock.
 }
 
 // Transfer mocks base method.
-func (m *MockControl) Transfer(money *models.Money) error {
+func (m *MockControl) Transfer(money *api.Money) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Transfer", money)
 	ret0, _ := ret[0].(error)

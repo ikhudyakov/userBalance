@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"flag"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 	c "userbalance/internal/config"
 	"userbalance/internal/handler"
 	"userbalance/internal/repository"
@@ -33,8 +31,8 @@ func main() {
 	path = defaultPath
 
 	flag.StringVar(&path, "config", "./configs/config.yaml", "example -config ./configs/config.yaml")
-	migrationup := flag.Bool("migrationup", false, "use migrationup to perform migrationup")
-	migrationdown := flag.Bool("migrationdown", false, "use migrationdown to perform migrationdown")
+	migrationup := flag.Bool("migrationup", false, "use -migrationup to perform migrationup")
+	migrationdown := flag.Bool("migrationdown", false, "use -migrationdown to perform migrationdown")
 
 	flag.Parse()
 
@@ -65,7 +63,7 @@ func main() {
 	server.conf = conf
 
 	go func() {
-		if err := server.Run(conf.Port, handlers.Init()); err != nil {
+		if err := server.Run(conf.Port, handlers); err != nil {
 			log.Fatalf("ошибка при запуске http сервера: %s", err.Error())
 		}
 	}()
@@ -76,11 +74,7 @@ func main() {
 
 	log.Println("сервер останавливается")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(conf.ContexTimeout)*time.Second)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("произошла ошибка при выключении сервера: %s", err.Error())
-	}
+	server.Shutdown()
 
 	if err := db.Close(); err != nil {
 		log.Fatalf("произошла ошибка при закрытии соединения с БД: %s", err.Error())

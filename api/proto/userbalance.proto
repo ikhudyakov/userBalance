@@ -1,0 +1,71 @@
+syntax = "proto3";
+package api;
+
+option go_package = "pkg/api";
+import "google/protobuf/timestamp.proto";
+
+service UserBalance{
+    rpc GetBalance(User) returns (User) {}
+    rpc ReplenishmentBalance(Replenishment) returns (Response) {}
+    rpc Transfer(Money) returns (Response) {}
+    rpc GetHistory(RequestHistory) returns (Histories) {}
+    rpc Reservation(Transaction) returns (Response) {}
+    rpc Confirmation(Transaction) returns (Response) {}
+    rpc CancelReservation(Transaction) returns (Response) {}
+}
+
+message User {
+	int32 Id = 1;
+	int32 Balance = 2;
+}
+
+message Replenishment {
+	int32 UserID = 1;
+	int32 Amount = 2;
+	string Date = 3;
+}
+
+message Transaction {
+	int32 UserID = 1;   
+	int32 Amount = 2;
+	string Date = 3;
+	int32 ServiceID = 4;
+	int32 OrderID = 5;
+}
+
+message Money {
+	int32 FromUserID = 1;
+	int32 ToUserID = 2;
+	int32 Amount = 3;
+	string Date = 4;
+}
+
+message Response {
+	string Message = 1;
+}
+
+message History {
+	google.protobuf.Timestamp Date = 1;         
+	int32 Amount = 2;
+	string Description = 3;
+}
+
+message Histories {
+	repeated History Entity = 1;
+}
+
+message RequestHistory {
+	int32 UserID = 1;
+	string SortField = 2;
+	string Direction = 3;
+}
+
+message RequestReport {
+	int32 Month = 1;
+	int32 Year = 2;
+}
+
+message Report {
+	string Title = 1;
+	int32 Amount = 2;
+}

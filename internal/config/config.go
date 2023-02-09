@@ -21,6 +21,8 @@ type Config struct {
 	MigrationPath  string `yaml:"migrationpath"`
 	ReadTimeout    int    `yaml:"readtimeout"`
 	WriteTimeout   int    `yaml:"writetimeout"`
+	ServerHost     string `yaml:"serverhost"`
+	ServerPort     string `yaml:"serverport"`
 }
 
 func GetConfig(path string) (*Config, error) {

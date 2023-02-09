@@ -6,6 +6,6 @@ ENV GOPATH=/
 COPY ./ ./
 
 RUN go mod download
-RUN go build -o userbalance ./cmd
+RUN go build -o client ./cmd/client
 
-CMD ["./userbalance", "-migrationup"]
+CMD ["./client"]

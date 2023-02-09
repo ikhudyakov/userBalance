@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 	c "userbalance/internal/config"
-	"userbalance/internal/models"
 	"userbalance/internal/repository"
+	"userbalance/pkg/api"
 )
 
 const layout string = "2006-01-02"
@@ -28,8 +28,8 @@ func NewControlService(repo repository.Control, conf *c.Config, db *sql.DB) *Con
 	}
 }
 
-func (c *ControlService) GetBalance(userId int) (*models.User, error) {
-	var user *models.User
+func (c *ControlService) GetBalance(userId int32) (*api.User, error) {
+	var user *api.User
 	var err error
 
 	if user, err = c.repo.GetUser(userId); err != nil {
@@ -41,10 +41,10 @@ func (c *ControlService) GetBalance(userId int) (*models.User, error) {
 	return user, err
 }
 
-func (c *ControlService) ReplenishmentBalance(replenishment *models.Replenishment) error {
+func (c *ControlService) ReplenishmentBalance(replenishment *api.Replenishment) error {
 	var tx *sql.Tx
 	var err error
-	var user *models.User
+	var user *api.User
 
 	date, _ := time.Parse(layout, replenishment.Date)
 	if date.IsZero() {
@@ -89,10 +89,10 @@ func (c *ControlService) ReplenishmentBalance(replenishment *models.Replenishmen
 	return tx.Commit()
 }
 
-func (c *ControlService) Transfer(money *models.Money) error {
+func (c *ControlService) Transfer(money *api.Money) error {
 	var tx *sql.Tx
 	var err error
-	var fromUser, toUser *models.User
+	var fromUser, toUser *api.User
 
 	date, _ := time.Parse(layout, money.Date)
 	if date.IsZero() {
@@ -147,12 +147,12 @@ func (c *ControlService) Transfer(money *models.Money) error {
 	return tx.Commit()
 }
 
-func (c *ControlService) Reservation(transaction *models.Transaction) error {
+func (c *ControlService) Reservation(transaction *api.Transaction) error {
 	var tx *sql.Tx
-	var user *models.User
+	var user *api.User
 	var service string
 	var err error
-	var reservBalance int
+	var reservBalance int32
 
 	date, _ := time.Parse(layout, transaction.Date)
 	if date.IsZero() {
@@ -213,12 +213,12 @@ func (c *ControlService) Reservation(transaction *models.Transaction) error {
 	return tx.Commit()
 }
 
-func (c *ControlService) CancelReservation(transaction *models.Transaction) error {
+func (c *ControlService) CancelReservation(transaction *api.Transaction) error {
 	var tx *sql.Tx
-	var user *models.User
+	var user *api.User
 	var service string
 	var err error
-	var reservBalance int
+	var reservBalance int32
 
 	date, _ := time.Parse(layout, transaction.Date)
 	if date.IsZero() {
@@ -280,10 +280,10 @@ func (c *ControlService) CancelReservation(transaction *models.Transaction) erro
 	return tx.Commit()
 }
 
-func (c *ControlService) Confirmation(transaction *models.Transaction) error {
+func (c *ControlService) Confirmation(transaction *api.Transaction) error {
 	var tx *sql.Tx
 	var err error
-	var reservBalance int
+	var reservBalance int32
 
 	date, _ := time.Parse(layout, transaction.Date)
 	if date.IsZero() {
@@ -323,14 +323,14 @@ func (c *ControlService) Confirmation(transaction *models.Transaction) error {
 	return tx.Commit()
 }
 
-func (c *ControlService) CreateReport(requestReport *models.RequestReport) (string, error) {
-	var report map[string]int
+func (c *ControlService) CreateReport(requestReport *api.RequestReport) (string, error) {
+	var report map[string]int32
 	var err error
 	var file *os.File
 	var path string
 	var dir string = "file"
 
-	from := time.Date(requestReport.Year, time.Month(requestReport.Month), 1, 0, 0, 0, 0, time.Local)
+	from := time.Date(int(requestReport.Year), time.Month(requestReport.Month), 1, 0, 0, 0, 0, time.Local)
 	to := from.AddDate(0, 1, 0).Add(-time.Nanosecond)
 
 	if report, err = c.repo.GetReport(from, to); err != nil {
@@ -373,7 +373,7 @@ func (c *ControlService) CreateReport(requestReport *models.RequestReport) (stri
 	return path, err
 }
 
-func (c *ControlService) GetHistory(requestHistory *models.RequestHistory) ([]models.History, error) {
+func (c *ControlService) GetHistory(requestHistory *api.RequestHistory) ([]*api.History, error) {
 	direction := strings.ToUpper(requestHistory.Direction)
 	sortField := strings.ToLower(requestHistory.SortField)
 

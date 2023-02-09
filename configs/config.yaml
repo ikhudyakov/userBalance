@@ -1,3 +1,4 @@
+#server
 host : "localhost"
 port : ":8081"
 dbhost : "db"
@@ -10,3 +11,6 @@ contextimeout : 5
 migrationpath : "./migrations"
 readtimeout : 10
 eritetimeout : 10
+#client
+serverhost : "goserver"
+serverport : ":8081"

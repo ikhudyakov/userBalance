@@ -8,36 +8,37 @@ import (
 	"testing"
 	"time"
 	"userbalance/internal/config"
-	"userbalance/internal/models"
 	"userbalance/internal/repository"
 	mock_repository "userbalance/internal/repository/mocks"
+	"userbalance/pkg/api"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestGetBalance(t *testing.T) {
 
-	type mockBehavior func(s *mock_repository.MockControl, userId int)
+	type mockBehavior func(s *mock_repository.MockControl, userId int32)
 
 	testTable := []struct {
 		name         string
 		mockBehavior mockBehavior
-		userId       int
-		want         *models.User
+		userId       int32
+		want         *api.User
 		wantErr      bool
 	}{
 		{
 			name:   "OK",
 			userId: 1,
-			mockBehavior: func(r *mock_repository.MockControl, userId int) {
+			mockBehavior: func(r *mock_repository.MockControl, userId int32) {
 				r.EXPECT().GetUser(userId).Return(
-					&models.User{
+					&api.User{
 						Id:      1,
 						Balance: 100}, nil)
 			},
-			want: &models.User{
+			want: &api.User{
 				Id:      1,
 				Balance: 100,
 			},
@@ -47,7 +48,7 @@ func TestGetBalance(t *testing.T) {
 			name:    "error user not found",
 			userId:  0,
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, userId int) {
+			mockBehavior: func(r *mock_repository.MockControl, userId int32) {
 				r.EXPECT().GetUser(userId).Return(
 					nil, errors.New("пользователь не найден"))
 			},
@@ -57,7 +58,7 @@ func TestGetBalance(t *testing.T) {
 			name:    "error database",
 			userId:  0,
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, userId int) {
+			mockBehavior: func(r *mock_repository.MockControl, userId int32) {
 				r.EXPECT().GetUser(userId).Return(
 					nil, errors.New("error database"))
 			},
@@ -90,7 +91,7 @@ func TestGetBalance(t *testing.T) {
 
 func TestReplenishmentBalance(t *testing.T) {
 
-	type mockBehavior func(s *mock_repository.MockControl, replenishment *models.Replenishment, user *models.User)
+	type mockBehavior func(s *mock_repository.MockControl, replenishment *api.Replenishment, user *api.User)
 
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -101,24 +102,24 @@ func TestReplenishmentBalance(t *testing.T) {
 	testTable := []struct {
 		name          string
 		mockBehavior  mockBehavior
-		replenishment *models.Replenishment
-		user          *models.User
+		replenishment *api.Replenishment
+		user          *api.User
 		date          time.Time
 		wantErr       bool
 	}{
 		{
 			name: "OK user exists",
-			replenishment: &models.Replenishment{
+			replenishment: &api.Replenishment{
 				UserID: 1,
 				Amount: 100,
 				Date:   "2022-10-01",
 			},
 			date: time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local),
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 200,
 			},
-			mockBehavior: func(r *mock_repository.MockControl, replenishment *models.Replenishment, user *models.User) {
+			mockBehavior: func(r *mock_repository.MockControl, replenishment *api.Replenishment, user *api.User) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), replenishment.UserID).Return(user, nil)
 				r.EXPECT().UpdateBalanceTx(gomock.Any(), replenishment.UserID, user.Balance+replenishment.Amount).Return(nil)
@@ -129,13 +130,13 @@ func TestReplenishmentBalance(t *testing.T) {
 
 		{
 			name: "OK user not found",
-			replenishment: &models.Replenishment{
+			replenishment: &api.Replenishment{
 				UserID: 1,
 				Amount: 100,
 				Date:   "2022-10-01",
 			},
 			date: time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local),
-			mockBehavior: func(r *mock_repository.MockControl, replenishment *models.Replenishment, user *models.User) {
+			mockBehavior: func(r *mock_repository.MockControl, replenishment *api.Replenishment, user *api.User) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), replenishment.UserID).Return(nil, nil)
 				r.EXPECT().InsertUserTx(gomock.Any(), replenishment.UserID, replenishment.Amount).Return(nil)
@@ -147,14 +148,14 @@ func TestReplenishmentBalance(t *testing.T) {
 
 		{
 			name: "error getuser",
-			replenishment: &models.Replenishment{
+			replenishment: &api.Replenishment{
 				UserID: 1,
 				Amount: 100,
 				Date:   "2022-10-01",
 			},
 			wantErr: true,
 			date:    time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local),
-			mockBehavior: func(r *mock_repository.MockControl, replenishment *models.Replenishment, user *models.User) {
+			mockBehavior: func(r *mock_repository.MockControl, replenishment *api.Replenishment, user *api.User) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), replenishment.UserID).Return(nil, errors.New("db error"))
 				mock.ExpectRollback()
@@ -163,18 +164,18 @@ func TestReplenishmentBalance(t *testing.T) {
 
 		{
 			name: "error updatebalance",
-			replenishment: &models.Replenishment{
+			replenishment: &api.Replenishment{
 				UserID: 1,
 				Amount: 100,
 				Date:   "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 200,
 			},
 			wantErr: true,
 			date:    time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local),
-			mockBehavior: func(r *mock_repository.MockControl, replenishment *models.Replenishment, user *models.User) {
+			mockBehavior: func(r *mock_repository.MockControl, replenishment *api.Replenishment, user *api.User) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), replenishment.UserID).Return(user, nil)
 				r.EXPECT().UpdateBalanceTx(gomock.Any(), replenishment.UserID, user.Balance+replenishment.Amount).Return(errors.New("db error"))
@@ -184,18 +185,18 @@ func TestReplenishmentBalance(t *testing.T) {
 
 		{
 			name: "error insertlog",
-			replenishment: &models.Replenishment{
+			replenishment: &api.Replenishment{
 				UserID: 1,
 				Amount: 100,
 				Date:   "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 200,
 			},
 			wantErr: true,
 			date:    time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local),
-			mockBehavior: func(r *mock_repository.MockControl, replenishment *models.Replenishment, user *models.User) {
+			mockBehavior: func(r *mock_repository.MockControl, replenishment *api.Replenishment, user *api.User) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), replenishment.UserID).Return(user, nil)
 				r.EXPECT().UpdateBalanceTx(gomock.Any(), replenishment.UserID, user.Balance+replenishment.Amount).Return(nil)
@@ -206,14 +207,14 @@ func TestReplenishmentBalance(t *testing.T) {
 
 		{
 			name: "error insertuser",
-			replenishment: &models.Replenishment{
+			replenishment: &api.Replenishment{
 				UserID: 1,
 				Amount: 100,
 				Date:   "2022-10-01",
 			},
 			wantErr: true,
 			date:    time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local),
-			mockBehavior: func(r *mock_repository.MockControl, replenishment *models.Replenishment, user *models.User) {
+			mockBehavior: func(r *mock_repository.MockControl, replenishment *api.Replenishment, user *api.User) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), replenishment.UserID).Return(nil, nil)
 				r.EXPECT().InsertUserTx(gomock.Any(), replenishment.UserID, replenishment.Amount).Return(errors.New("db error"))
@@ -223,14 +224,14 @@ func TestReplenishmentBalance(t *testing.T) {
 
 		{
 			name: "error insertmoneyreservacounts",
-			replenishment: &models.Replenishment{
+			replenishment: &api.Replenishment{
 				UserID: 1,
 				Amount: 100,
 				Date:   "2022-10-01",
 			},
 			wantErr: true,
 			date:    time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local),
-			mockBehavior: func(r *mock_repository.MockControl, replenishment *models.Replenishment, user *models.User) {
+			mockBehavior: func(r *mock_repository.MockControl, replenishment *api.Replenishment, user *api.User) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), replenishment.UserID).Return(nil, nil)
 				r.EXPECT().InsertUserTx(gomock.Any(), replenishment.UserID, replenishment.Amount).Return(nil)
@@ -241,14 +242,14 @@ func TestReplenishmentBalance(t *testing.T) {
 
 		{
 			name: "error insertlog",
-			replenishment: &models.Replenishment{
+			replenishment: &api.Replenishment{
 				UserID: 1,
 				Amount: 100,
 				Date:   "2022-10-01",
 			},
 			wantErr: true,
 			date:    time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local),
-			mockBehavior: func(r *mock_repository.MockControl, replenishment *models.Replenishment, user *models.User) {
+			mockBehavior: func(r *mock_repository.MockControl, replenishment *api.Replenishment, user *api.User) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), replenishment.UserID).Return(nil, nil)
 				r.EXPECT().InsertUserTx(gomock.Any(), replenishment.UserID, replenishment.Amount).Return(nil)
@@ -290,33 +291,33 @@ func TestTransfer(t *testing.T) {
 	}
 	defer db.Close()
 
-	type mockBehavior func(s *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money)
+	type mockBehavior func(s *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money)
 
 	testTable := []struct {
 		name         string
 		mockBehavior mockBehavior
-		money        *models.Money
-		fromUser     *models.User
-		toUser       *models.User
+		money        *api.Money
+		fromUser     *api.User
+		toUser       *api.User
 		wantErr      bool
 	}{
 		{
 			name: "OK",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     100,
 				Date:       "2022-10-01",
 			},
-			fromUser: &models.User{
+			fromUser: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
-			toUser: &models.User{
+			toUser: &api.User{
 				Id:      2,
 				Balance: 500,
 			},
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(fromUser, nil)
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.ToUserID).Return(toUser, nil)
@@ -342,18 +343,18 @@ func TestTransfer(t *testing.T) {
 
 		{
 			name: "error fromuser not found",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     100,
 				Date:       "2022-10-01",
 			},
-			toUser: &models.User{
+			toUser: &api.User{
 				Id:      2,
 				Balance: 500,
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(nil, nil)
 				mock.ExpectRollback()
@@ -362,18 +363,18 @@ func TestTransfer(t *testing.T) {
 
 		{
 			name: "error touser not found",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     100,
 				Date:       "2022-10-01",
 			},
-			fromUser: &models.User{
+			fromUser: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(fromUser, nil)
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.ToUserID).Return(nil, nil)
@@ -383,22 +384,22 @@ func TestTransfer(t *testing.T) {
 
 		{
 			name: "error insufficient funds",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     2000,
 				Date:       "2022-10-01",
 			},
-			fromUser: &models.User{
+			fromUser: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
-			toUser: &models.User{
+			toUser: &api.User{
 				Id:      2,
 				Balance: 500,
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(fromUser, nil)
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.ToUserID).Return(toUser, nil)
@@ -408,14 +409,14 @@ func TestTransfer(t *testing.T) {
 
 		{
 			name: "error getfromuser",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     2000,
 				Date:       "2022-10-01",
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(nil, errors.New("db error"))
 				mock.ExpectRollback()
@@ -424,18 +425,18 @@ func TestTransfer(t *testing.T) {
 
 		{
 			name: "error gettouser",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     2000,
 				Date:       "2022-10-01",
 			},
-			fromUser: &models.User{
+			fromUser: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(fromUser, nil)
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.ToUserID).Return(nil, errors.New("db error"))
@@ -445,22 +446,22 @@ func TestTransfer(t *testing.T) {
 
 		{
 			name: "error updatebalancefromuser",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     100,
 				Date:       "2022-10-01",
 			},
-			fromUser: &models.User{
+			fromUser: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
-			toUser: &models.User{
+			toUser: &api.User{
 				Id:      2,
 				Balance: 500,
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(fromUser, nil)
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.ToUserID).Return(toUser, nil)
@@ -471,22 +472,22 @@ func TestTransfer(t *testing.T) {
 
 		{
 			name: "error insertlogfromuser",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     100,
 				Date:       "2022-10-01",
 			},
-			fromUser: &models.User{
+			fromUser: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
-			toUser: &models.User{
+			toUser: &api.User{
 				Id:      2,
 				Balance: 500,
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(fromUser, nil)
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.ToUserID).Return(toUser, nil)
@@ -504,22 +505,22 @@ func TestTransfer(t *testing.T) {
 
 		{
 			name: "error updatebalancetouser",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     100,
 				Date:       "2022-10-01",
 			},
-			fromUser: &models.User{
+			fromUser: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
-			toUser: &models.User{
+			toUser: &api.User{
 				Id:      2,
 				Balance: 500,
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(fromUser, nil)
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.ToUserID).Return(toUser, nil)
@@ -538,22 +539,22 @@ func TestTransfer(t *testing.T) {
 
 		{
 			name: "error insertlogtouser",
-			money: &models.Money{
+			money: &api.Money{
 				FromUserID: 1,
 				ToUserID:   2,
 				Amount:     100,
 				Date:       "2022-10-01",
 			},
-			fromUser: &models.User{
+			fromUser: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
-			toUser: &models.User{
+			toUser: &api.User{
 				Id:      2,
 				Balance: 500,
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, fromUser *models.User, toUser *models.User, money *models.Money) {
+			mockBehavior: func(r *mock_repository.MockControl, fromUser *api.User, toUser *api.User, money *api.Money) {
 				mock.ExpectBegin()
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.FromUserID).Return(fromUser, nil)
 				r.EXPECT().GetUserForUpdate(gomock.Any(), money.ToUserID).Return(toUser, nil)
@@ -609,32 +610,32 @@ func TestReservation(t *testing.T) {
 
 	type mockBehavior func(
 		s *mock_repository.MockControl,
-		user *models.User,
-		transaction *models.Transaction,
+		user *api.User,
+		transaction *api.Transaction,
 		title string,
-		reservBalance int,
+		reservBalance int32,
 		date time.Time)
 
 	testTable := []struct {
 		name          string
 		mockBehavior  mockBehavior
-		transaction   *models.Transaction
-		user          *models.User
+		transaction   *api.Transaction
+		user          *api.User
 		service       string
-		reservBalance int
+		reservBalance int32
 		date          time.Time
 		wantErr       bool
 	}{
 		{
 			name: "OK",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -643,10 +644,10 @@ func TestReservation(t *testing.T) {
 			date:          time.Date(2022, 10, 01, 0, 0, 0, 0, time.UTC),
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 				mock.ExpectBegin()
@@ -675,14 +676,14 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error service not found",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -692,10 +693,10 @@ func TestReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 			},
@@ -703,7 +704,7 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error user not found",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -716,10 +717,10 @@ func TestReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 				mock.ExpectBegin()
@@ -730,14 +731,14 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error insufficient funds",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 10,
 			},
@@ -747,10 +748,10 @@ func TestReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 				mock.ExpectBegin()
@@ -761,14 +762,14 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error service",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -777,10 +778,10 @@ func TestReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, errors.New("db error"))
 			},
@@ -788,7 +789,7 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error getuser",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -801,10 +802,10 @@ func TestReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 				mock.ExpectBegin()
@@ -815,14 +816,14 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error getbalance",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -831,10 +832,10 @@ func TestReservation(t *testing.T) {
 			wantErr: true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 				mock.ExpectBegin()
@@ -846,14 +847,14 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error updatebalance",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -863,10 +864,10 @@ func TestReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 				mock.ExpectBegin()
@@ -879,14 +880,14 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error updatebalance",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -896,10 +897,10 @@ func TestReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 				mock.ExpectBegin()
@@ -913,14 +914,14 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error insertmoneyreservdetails",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -930,10 +931,10 @@ func TestReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 				mock.ExpectBegin()
@@ -955,14 +956,14 @@ func TestReservation(t *testing.T) {
 
 		{
 			name: "error insertlog",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -972,10 +973,10 @@ func TestReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
 				mock.ExpectBegin()
@@ -1040,34 +1041,34 @@ func TestCancelReservation(t *testing.T) {
 
 	type mockBehavior func(
 		s *mock_repository.MockControl,
-		user *models.User,
-		transaction *models.Transaction,
+		user *api.User,
+		transaction *api.Transaction,
 		title string,
-		reservBalance int,
+		reservBalance int32,
 		date time.Time,
 		rows int64)
 
 	testTable := []struct {
 		name          string
 		mockBehavior  mockBehavior
-		transaction   *models.Transaction
-		user          *models.User
+		transaction   *api.Transaction
+		user          *api.User
 		service       string
-		reservBalance int
+		reservBalance int32
 		date          time.Time
 		rows          int64
 		wantErr       bool
 	}{
 		{
 			name: "OK",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -1077,10 +1078,10 @@ func TestCancelReservation(t *testing.T) {
 			rows:          1,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1110,7 +1111,7 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error service not found",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1121,10 +1122,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr: true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1133,7 +1134,7 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error user not found",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1144,10 +1145,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr: true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1159,14 +1160,14 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error reserv not found",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -1177,10 +1178,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1201,7 +1202,7 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error service",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1211,10 +1212,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr: true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, errors.New("db error"))
@@ -1223,7 +1224,7 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error getuser",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1234,10 +1235,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr: true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1249,14 +1250,14 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error getbalance",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -1265,10 +1266,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1281,14 +1282,14 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error delete",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -1298,10 +1299,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1322,14 +1323,14 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error insertlog",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -1340,10 +1341,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1371,14 +1372,14 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error updatebalance",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -1389,10 +1390,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1421,14 +1422,14 @@ func TestCancelReservation(t *testing.T) {
 
 		{
 			name: "error moneyreservaccounts",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
 				OrderID:   10,
 				Date:      "2022-10-01",
 			},
-			user: &models.User{
+			user: &api.User{
 				Id:      1,
 				Balance: 1000,
 			},
@@ -1439,10 +1440,10 @@ func TestCancelReservation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				user *models.User,
-				transaction *models.Transaction,
+				user *api.User,
+				transaction *api.Transaction,
 				service string,
-				reservBalance int,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				r.EXPECT().GetService(transaction.ServiceID).Return(service, nil)
@@ -1509,23 +1510,23 @@ func TestConfirmation(t *testing.T) {
 
 	type mockBehavior func(
 		s *mock_repository.MockControl,
-		transaction *models.Transaction,
-		reservBalance int,
+		transaction *api.Transaction,
+		reservBalance int32,
 		date time.Time,
 		rows int64)
 
 	testTable := []struct {
 		name          string
 		mockBehavior  mockBehavior
-		transaction   *models.Transaction
-		reservBalance int
+		transaction   *api.Transaction
+		reservBalance int32
 		rows          int64
 		date          time.Time
 		wantErr       bool
 	}{
 		{
 			name: "OK",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1537,8 +1538,8 @@ func TestConfirmation(t *testing.T) {
 			rows:          1,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				transaction *models.Transaction,
-				reservBalance int,
+				transaction *api.Transaction,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				mock.ExpectBegin()
@@ -1564,7 +1565,7 @@ func TestConfirmation(t *testing.T) {
 
 		{
 			name: "error reserv not found",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1576,8 +1577,8 @@ func TestConfirmation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				transaction *models.Transaction,
-				reservBalance int,
+				transaction *api.Transaction,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				mock.ExpectBegin()
@@ -1595,7 +1596,7 @@ func TestConfirmation(t *testing.T) {
 
 		{
 			name: "error getbalance",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1607,8 +1608,8 @@ func TestConfirmation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				transaction *models.Transaction,
-				reservBalance int,
+				transaction *api.Transaction,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				mock.ExpectBegin()
@@ -1619,7 +1620,7 @@ func TestConfirmation(t *testing.T) {
 
 		{
 			name: "error delete",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1631,8 +1632,8 @@ func TestConfirmation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				transaction *models.Transaction,
-				reservBalance int,
+				transaction *api.Transaction,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				mock.ExpectBegin()
@@ -1650,7 +1651,7 @@ func TestConfirmation(t *testing.T) {
 
 		{
 			name: "error update",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1663,8 +1664,8 @@ func TestConfirmation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				transaction *models.Transaction,
-				reservBalance int,
+				transaction *api.Transaction,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				mock.ExpectBegin()
@@ -1683,7 +1684,7 @@ func TestConfirmation(t *testing.T) {
 
 		{
 			name: "error insert",
-			transaction: &models.Transaction{
+			transaction: &api.Transaction{
 				UserID:    1,
 				Amount:    100,
 				ServiceID: 1,
@@ -1696,8 +1697,8 @@ func TestConfirmation(t *testing.T) {
 			wantErr:       true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				transaction *models.Transaction,
-				reservBalance int,
+				transaction *api.Transaction,
+				reservBalance int32,
 				date time.Time,
 				rows int64) {
 				mock.ExpectBegin()
@@ -1762,32 +1763,32 @@ func TestCreateReport(t *testing.T) {
 
 	type mockBehavior func(
 		s *mock_repository.MockControl,
-		requestReport models.RequestReport,
+		requestReport api.RequestReport,
 		from time.Time,
-		report map[string]int)
+		report map[string]int32)
 
 	testTable := []struct {
 		name          string
 		mockBehavior  mockBehavior
-		requestReport models.RequestReport
+		requestReport api.RequestReport
 		from          time.Time
-		report        map[string]int
+		report        map[string]int32
 		want          string
 		wantErr       bool
 	}{
 		{
 			name: "OK",
-			requestReport: models.RequestReport{
+			requestReport: api.RequestReport{
 				Month: 11,
 				Year:  2022,
 			},
-			report: map[string]int{"Услуга №1": 1200},
+			report: map[string]int32{"Услуга №1": 1200},
 			from:   time.Date(2022, 11, 01, 0, 0, 0, 0, time.Local),
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				requestReport models.RequestReport,
+				requestReport api.RequestReport,
 				from time.Time,
-				report map[string]int) {
+				report map[string]int32) {
 				to := from.AddDate(0, 1, 0).Add(-time.Nanosecond)
 				r.EXPECT().GetReport(from, to).Return(report, nil)
 			},
@@ -1796,18 +1797,18 @@ func TestCreateReport(t *testing.T) {
 
 		{
 			name: "error",
-			requestReport: models.RequestReport{
+			requestReport: api.RequestReport{
 				Month: 11,
 				Year:  2022,
 			},
-			report:  map[string]int{"Услуга №1": 1200},
+			report:  map[string]int32{"Услуга №1": 1200},
 			from:    time.Date(2022, 11, 01, 0, 0, 0, 0, time.Local),
 			wantErr: true,
 			mockBehavior: func(
 				r *mock_repository.MockControl,
-				requestReport models.RequestReport,
+				requestReport api.RequestReport,
 				from time.Time,
-				report map[string]int) {
+				report map[string]int32) {
 				to := from.AddDate(0, 1, 0).Add(-time.Nanosecond)
 				r.EXPECT().GetReport(from, to).Return(report, errors.New("db error"))
 			},
@@ -1844,7 +1845,7 @@ func TestCreateReport(t *testing.T) {
 
 func TestGetHistory(t *testing.T) {
 
-	type mockBehavior func(s *mock_repository.MockControl, requestHistory *models.RequestHistory)
+	type mockBehavior func(s *mock_repository.MockControl, requestHistory *api.RequestHistory)
 	db, _, err := sqlmock.New()
 	if err != nil {
 		log.Fatal(err)
@@ -1854,28 +1855,28 @@ func TestGetHistory(t *testing.T) {
 	testTable := []struct {
 		name           string
 		mockBehavior   mockBehavior
-		requestHistory models.RequestHistory
-		want           []models.History
+		requestHistory api.RequestHistory
+		want           []*api.History
 		wantErr        bool
 	}{
 		{
 			name: "OK",
-			requestHistory: models.RequestHistory{
+			requestHistory: api.RequestHistory{
 				UserID:    1,
 				SortField: "amount",
 				Direction: "desc",
 			},
-			want: []models.History{
+			want: []*api.History{
 				{
-					Date:        time.Date(2022, 10, 01, 0, 0, 0, 0, time.UTC),
+					Date:        &timestamppb.Timestamp{Seconds: time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local).Unix()},
 					Amount:      100,
 					Description: "Пополнение баланса",
 				},
 			},
-			mockBehavior: func(r *mock_repository.MockControl, requestHistory *models.RequestHistory) {
-				r.EXPECT().GetHistory(requestHistory).Return([]models.History{
+			mockBehavior: func(r *mock_repository.MockControl, requestHistory *api.RequestHistory) {
+				r.EXPECT().GetHistory(requestHistory).Return([]*api.History{
 					{
-						Date:        time.Date(2022, 10, 01, 0, 0, 0, 0, time.UTC),
+						Date:        &timestamppb.Timestamp{Seconds: time.Date(2022, 10, 01, 0, 0, 0, 0, time.Local).Unix()},
 						Amount:      100,
 						Description: "Пополнение баланса",
 					},
@@ -1885,13 +1886,13 @@ func TestGetHistory(t *testing.T) {
 
 		{
 			name: "error",
-			requestHistory: models.RequestHistory{
+			requestHistory: api.RequestHistory{
 				UserID:    1,
 				SortField: "amount",
 				Direction: "desc",
 			},
 			wantErr: true,
-			mockBehavior: func(r *mock_repository.MockControl, requestHistory *models.RequestHistory) {
+			mockBehavior: func(r *mock_repository.MockControl, requestHistory *api.RequestHistory) {
 				r.EXPECT().GetHistory(requestHistory).Return(nil, errors.New("db error"))
 			},
 		},

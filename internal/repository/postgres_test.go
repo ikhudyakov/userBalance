@@ -5,9 +5,10 @@ import (
 	"log"
 	"testing"
 	"time"
-	"userbalance/internal/models"
+	"userbalance/pkg/api"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,18 +22,18 @@ func TestGetUser(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid int
+		userid int32
 	}
 
-	type mockBehavior func(args args, id, balance int)
+	type mockBehavior func(args args, id, balance int32)
 
 	testTable := []struct {
 		name         string
 		mockBehavior mockBehavior
 		args         args
-		id           int
-		balance      int
-		want         *models.User
+		id           int32
+		balance      int32
+		want         *api.User
 		wantErr      bool
 	}{
 		{
@@ -42,11 +43,11 @@ func TestGetUser(t *testing.T) {
 			},
 			id:      1,
 			balance: 100,
-			want: &models.User{
+			want: &api.User{
 				Id:      1,
 				Balance: 100,
 			},
-			mockBehavior: func(args args, id, balance int) {
+			mockBehavior: func(args args, id, balance int32) {
 				rows := sqlmock.NewRows([]string{"id", "balance"}).AddRow(id, balance)
 				mock.ExpectQuery("SELECT id, balance FROM users").WithArgs(args.userid).WillReturnRows(rows)
 			},
@@ -55,7 +56,7 @@ func TestGetUser(t *testing.T) {
 		{
 			name:    "error",
 			wantErr: true,
-			mockBehavior: func(args args, id, balance int) {
+			mockBehavior: func(args args, id, balance int32) {
 				mock.ExpectQuery("SELECT id, balance FROM users").WithArgs(args.userid).WillReturnError(errors.New("some error"))
 			},
 		},
@@ -87,18 +88,18 @@ func TestGetUserForUpdate(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid int
+		userid int32
 	}
 
-	type mockBehavior func(args args, id, balance int)
+	type mockBehavior func(args args, id, balance int32)
 
 	testTable := []struct {
 		name         string
 		mockBehavior mockBehavior
 		args         args
-		id           int
-		balance      int
-		want         *models.User
+		id           int32
+		balance      int32
+		want         *api.User
 		wantErr      bool
 	}{
 		{
@@ -108,11 +109,11 @@ func TestGetUserForUpdate(t *testing.T) {
 			},
 			id:      1,
 			balance: 100,
-			want: &models.User{
+			want: &api.User{
 				Id:      1,
 				Balance: 100,
 			},
-			mockBehavior: func(args args, id, balance int) {
+			mockBehavior: func(args args, id, balance int32) {
 				mock.ExpectBegin()
 				rows := sqlmock.NewRows([]string{"id", "balance"}).AddRow(id, balance)
 				mock.ExpectPrepare("SELECT id, balance FROM users").ExpectQuery().WithArgs(args.userid).WillReturnRows(rows)
@@ -122,7 +123,7 @@ func TestGetUserForUpdate(t *testing.T) {
 		{
 			name:    "error",
 			wantErr: true,
-			mockBehavior: func(args args, id, balance int) {
+			mockBehavior: func(args args, id, balance int32) {
 				mock.ExpectBegin()
 				mock.ExpectPrepare("SELECT id, balance FROM users").ExpectQuery().WithArgs(args.userid).WillReturnError(errors.New("some error"))
 				mock.ExpectRollback()
@@ -162,15 +163,15 @@ func TestGetReport(t *testing.T) {
 		toDate   time.Time
 	}
 
-	type mockBehavior func(args args, title string, sum int)
+	type mockBehavior func(args args, title string, sum int32)
 
 	testTable := []struct {
 		name         string
 		mockBehavior mockBehavior
 		args         args
 		title        string
-		sum          int
-		want         map[string]int
+		sum          int32
+		want         map[string]int32
 		wantErr      bool
 	}{
 		{
@@ -181,8 +182,8 @@ func TestGetReport(t *testing.T) {
 			},
 			title: "Услуга №1",
 			sum:   100,
-			want:  map[string]int{"Услуга №1": 100},
-			mockBehavior: func(args args, title string, sum int) {
+			want:  map[string]int32{"Услуга №1": 100},
+			mockBehavior: func(args args, title string, sum int32) {
 				rows := sqlmock.NewRows([]string{"title", "amount"}).AddRow(title, sum)
 				mock.ExpectQuery("SELECT(.*)").WithArgs(args.fromDate, args.toDate).WillReturnRows(rows)
 			},
@@ -191,7 +192,7 @@ func TestGetReport(t *testing.T) {
 		{
 			name:    "error",
 			wantErr: true,
-			mockBehavior: func(args args, title string, sum int) {
+			mockBehavior: func(args args, title string, sum int32) {
 				mock.ExpectQuery("SELECT(.*)").WithArgs(args.fromDate, args.toDate).WillReturnError(errors.New("some error"))
 			},
 		},
@@ -223,41 +224,41 @@ func TestGetHistory(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		requestHistory *models.RequestHistory
+		requestHistory *api.RequestHistory
 	}
 
-	type mockBehavior func(args args, date time.Time, amount int, description string)
+	type mockBehavior func(args args, date time.Time, amount int32, description string)
 
 	testTable := []struct {
 		name         string
 		mockBehavior mockBehavior
 		args         args
-		date         time.Time
-		amount       int
+		date         timestamppb.Timestamp
+		amount       int32
 		description  string
-		want         []models.History
+		want         []*api.History
 		wantErr      bool
 	}{
 		{
 			name: "OK",
 			args: args{
-				requestHistory: &models.RequestHistory{
+				requestHistory: &api.RequestHistory{
 					UserID:    1,
 					SortField: "asc",
 					Direction: "amount",
 				},
 			},
-			date:        time.Date(2022, 11, 01, 0, 0, 0, 0, time.Local),
+			date:        timestamppb.Timestamp{Seconds: time.Date(2022, 11, 01, 0, 0, 0, 0, time.Local).Unix()},
 			amount:      100,
 			description: "Пополнение баланса",
-			want: []models.History{
+			want: []*api.History{
 				{
-					Date:        time.Date(2022, 11, 01, 0, 0, 0, 0, time.Local),
+					Date:        &timestamppb.Timestamp{Seconds: time.Date(2022, 11, 01, 0, 0, 0, 0, time.Local).Unix()},
 					Amount:      100,
 					Description: "Пополнение баланса",
 				},
 			},
-			mockBehavior: func(args args, date time.Time, amount int, description string) {
+			mockBehavior: func(args args, date time.Time, amount int32, description string) {
 				rows := sqlmock.NewRows([]string{"date", "amount", "description"}).AddRow(date, amount, description)
 				mock.ExpectQuery("SELECT date, amount, description FROM logs").WithArgs(args.requestHistory.UserID).WillReturnRows(rows)
 			},
@@ -266,14 +267,14 @@ func TestGetHistory(t *testing.T) {
 		{
 			name: "error",
 			args: args{
-				requestHistory: &models.RequestHistory{
+				requestHistory: &api.RequestHistory{
 					UserID:    1,
 					SortField: "asc",
 					Direction: "amount",
 				},
 			},
 			wantErr: true,
-			mockBehavior: func(args args, date time.Time, amount int, description string) {
+			mockBehavior: func(args args, date time.Time, amount int32, description string) {
 				mock.ExpectQuery("SELECT date, amount, description FROM logs").WithArgs(args.requestHistory.UserID).WillReturnError(errors.New("some error"))
 			},
 		},
@@ -281,7 +282,7 @@ func TestGetHistory(t *testing.T) {
 
 	for _, testCase := range testTable {
 		t.Run(testCase.name, func(t *testing.T) {
-			testCase.mockBehavior(testCase.args, testCase.date, testCase.amount, testCase.description)
+			testCase.mockBehavior(testCase.args, testCase.date.AsTime(), testCase.amount, testCase.description)
 
 			got, err := r.GetHistory(
 				testCase.args.requestHistory)
@@ -305,8 +306,8 @@ func TestUpdateBalanceTx(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid int
-		amount int
+		userid int32
+		amount int32
 	}
 
 	type mockBehavior func(args args)
@@ -372,8 +373,8 @@ func TestInsertUserTx(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid int
-		amount int
+		userid int32
+		amount int32
 	}
 
 	type mockBehavior func(args args)
@@ -439,9 +440,9 @@ func TestInsertLogTx(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid      int
+		userid      int32
 		date        time.Time
-		amount      int
+		amount      int32
 		description string
 	}
 
@@ -514,7 +515,7 @@ func TestInsertMoneyReserveAccountsTx(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid int
+		userid int32
 	}
 
 	type mockBehavior func(args args)
@@ -577,8 +578,8 @@ func TestUpdateMoneyReserveAccountsTx(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid int
-		amount int
+		userid int32
+		amount int32
 	}
 
 	type mockBehavior func(args args)
@@ -644,17 +645,17 @@ func TestGetBalanceReserveAccountsTx(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid int
+		userid int32
 	}
 
-	type mockBehavior func(args args, balance int)
+	type mockBehavior func(args args, balance int32)
 
 	testTable := []struct {
 		name         string
 		mockBehavior mockBehavior
 		args         args
-		balance      int
-		want         int
+		balance      int32
+		want         int32
 		wantErr      bool
 	}{
 		{
@@ -664,7 +665,7 @@ func TestGetBalanceReserveAccountsTx(t *testing.T) {
 			},
 			balance: 100,
 			want:    100,
-			mockBehavior: func(args args, balance int) {
+			mockBehavior: func(args args, balance int32) {
 				mock.ExpectBegin()
 				rows := sqlmock.NewRows([]string{"balance"}).AddRow(balance)
 				mock.ExpectPrepare("SELECT balance FROM money_reserve_accounts").ExpectQuery().WithArgs(args.userid).WillReturnRows(rows)
@@ -674,7 +675,7 @@ func TestGetBalanceReserveAccountsTx(t *testing.T) {
 		{
 			name:    "error",
 			wantErr: true,
-			mockBehavior: func(args args, balance int) {
+			mockBehavior: func(args args, balance int32) {
 				mock.ExpectBegin()
 				mock.ExpectPrepare("SELECT id, balance FROM users").ExpectQuery().WithArgs(args.userid).WillReturnError(errors.New("some error"))
 				mock.ExpectRollback()
@@ -710,10 +711,10 @@ func TestInsertMoneyReserveDetailsTx(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid    int
-		serviceId int
-		orderId   int
-		amount    int
+		userid    int32
+		serviceId int32
+		orderId   int32
+		amount    int32
 		date      time.Time
 	}
 
@@ -801,10 +802,10 @@ func TestDeleteMoneyReserveDetailsTx(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid    int
-		serviceId int
-		orderId   int
-		amount    int
+		userid    int32
+		serviceId int32
+		orderId   int32
+		amount    int32
 		date      time.Time
 	}
 
@@ -896,9 +897,9 @@ func TestInsertReportTx(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		userid    int
-		serviceId int
-		amount    int
+		userid    int32
+		serviceId int32
+		amount    int32
 		date      time.Time
 	}
 
@@ -979,7 +980,7 @@ func TestGetService(t *testing.T) {
 	r := NewControlPostgres(db)
 
 	type args struct {
-		serviceid int
+		serviceid int32
 	}
 
 	type mockBehavior func(args args, title string)
